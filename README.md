@@ -12,7 +12,7 @@ Code for benchmark comparing self-supervised and semi-supervised deep classifier
 Follow the instructions here: https://conda.io/projects/conda/en/latest/user-guide/install/index.html
 
 ### Environment
-packages needed are specified in environment.yml
+packages needed are specified in environment.yml (TODO)
 
 # Running experiments
 ### Define the environment variable
