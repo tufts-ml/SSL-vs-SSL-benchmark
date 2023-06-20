@@ -18,7 +18,8 @@ packages needed are specified in environment.yml
 ### Define the environment variable
 ```export ROOT_PATH="paths to this repo" ```
 (e.g., '/ab/cd/SSL-vs-SSL-benchmark', then do export ROOT_PATH = '/ab/cd/SSL-vs-SSL-benchmark')
-<<<<<<< HEAD
+
+
 ### Example
 For example if you want to run FixMatch on TissueMNIST to reproduce Figure 1(a) and Figure A.2(a), go to [runs/TissueMNIST/FixMatch/](runs/TissueMNIST/FixMatch/)
 ``` bash launch_experiment.sh run_here ```
