@@ -1,10 +1,7 @@
 # SSL-vs-SSL-benchmark
 Code for benchmark comparing self-supervised and semi-supervised deep classifiers for medical images
 
-<<<<<<< HEAD
-=======
 
->>>>>>> ea704feabf264ff9ae74f788899acce1123df4b0
 # Setup
 ### Prepare datasets
 - TissueMNIST and PathMNIST: please visit https://zenodo.org/record/6496656
