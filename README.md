@@ -1,7 +1,10 @@
 # SSL-vs-SSL-benchmark
 Code for benchmark comparing self-supervised and semi-supervised deep classifiers for medical images
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> ea704feabf264ff9ae74f788899acce1123df4b0
 # Setup
 ### Prepare datasets
 - TissueMNIST and PathMNIST: please visit https://zenodo.org/record/6496656
@@ -18,6 +21,17 @@ packages needed are specified in environment.yml
 ### Define the environment variable
 ```export ROOT_PATH="paths to this repo" ```
 (e.g., '/ab/cd/SSL-vs-SSL-benchmark', then do export ROOT_PATH = '/ab/cd/SSL-vs-SSL-benchmark')
+<<<<<<< HEAD
+### Example
+For example if you want to run FixMatch on TissueMNIST to reproduce Figure 1(a) and Figure A.2(a), go to [runs/TissueMNIST/FixMatch/](runs/TissueMNIST/FixMatch/)
+``` bash launch_experiment.sh run_here ```
+
+Note that you will need to edit the paths to dataset in the launch_experiment.sh file.
+### A note on reproducibility
+While the focus of our paper is reproducibility, ultimately exact comparison to the results in our paper will be conflated by subtle differences such as the version of Pytorch etc (see https://pytorch.org/docs/stable/notes/randomness.html for more detail). We found in our experiment even with same random seed, result can vary sligtly between different runs (but usually less than 1%).
+## Citing this work
+TODO
+=======
 
 ### Example
 For example if you want to run Mean Teacher with Fix-A-Step for CIFAR-10 400labels/class , go to [runs/TissueMNIST/FixMatch/](runs/TissueMNIST/FixMatch/)
@@ -30,3 +44,4 @@ While the focus of our paper is reproducibility, ultimately exact comparison to 
 
 ## Citing this work
 TODO
+>>>>>>> ea704feabf264ff9ae74f788899acce1123df4b0
