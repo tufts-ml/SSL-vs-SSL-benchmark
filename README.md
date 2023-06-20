@@ -27,18 +27,8 @@ For example if you want to run FixMatch on TissueMNIST to reproduce Figure 1(a) 
 Note that you will need to edit the paths to dataset in the launch_experiment.sh file.
 ### A note on reproducibility
 While the focus of our paper is reproducibility, ultimately exact comparison to the results in our paper will be conflated by subtle differences such as the version of Pytorch etc (see https://pytorch.org/docs/stable/notes/randomness.html for more detail).
-## Citing this work
-TODO
-=======
-
-### Example
-For example if you want to run Mean Teacher with Fix-A-Step for CIFAR-10 400labels/class , go to [runs/TissueMNIST/FixMatch/](runs/TissueMNIST/FixMatch/)
-
-``` bash launch_experiment.sh run_here ```
-
-### A note on reproducibility
-While the focus of our paper is reproducibility, ultimately exact comparison to the results in our paper will be conflated by subtle differences such as the version of Pytorch etc (see https://pytorch.org/docs/stable/notes/randomness.html for more detail). We found in our experiment even with same random seed, result can vary sligtly between different runs (but usually less than 1%).
-
 
 ## Citing this work
 TODO
+
+
