@@ -5,7 +5,10 @@ Code for benchmark comparing self-supervised and semi-supervised deep classifier
 # Setup
 ### Prepare datasets
 - TissueMNIST and PathMNIST: please visit https://zenodo.org/record/6496656
-- TMED2: please visit https://TMED.cs.tufts.edu and follow the instruction.
+- AIROGS: please visit: https://zenodo.org/record/5793241 
+- TMED2: please visit https://TMED.cs.tufts.edu and follow the instruction. We use the split1 in the released data.
+
+For the exact data we use in the experiment (train/val/test/unlabeled split), you can download it from the box folder https://tufts.box.com/s/wxmd8a1gbkmau57n05vquu3e5sqbpgls
 
 
 ### Install Anaconda
