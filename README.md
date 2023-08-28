@@ -32,7 +32,7 @@ Note that you will need to edit the paths to dataset in the launch_experiment.sh
 While the focus of our paper is reproducibility, ultimately exact comparison to the results in our paper will be conflated by subtle differences such as the version of Pytorch etc (see https://pytorch.org/docs/stable/notes/randomness.html for more detail).
 
 ### Acknowledgement
-This repository builds upon the pytorch-consistency-regularization [https://github.com/perrying/pytorch-consistency-regularization]. Thanks for sharing the great code bases!
+This repository builds upon the public repo pytorch-consistency-regularization[https://github.com/perrying/pytorch-consistency-regularization]. Thanks for sharing the great code bases!
 
 ## Reference
 TODO
