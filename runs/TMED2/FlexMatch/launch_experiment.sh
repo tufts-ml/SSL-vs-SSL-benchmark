@@ -19,7 +19,6 @@ export patience=20
 
 export implementation='FlexMatch'
 
-#hyperparameters inherit from Echo_ClinicalManualScript_torch style
 export resume='last_checkpoint.pth.tar'
 
 #experiment setting
@@ -40,13 +39,13 @@ export start_epoch=0
 
 
 #data paths
-export l_train_dataset_path="/cluster/tufts/hugheslab/zhuang12/SemiSelfEvaluationProject/ML_DATA/$dataset_name/unnormalized_HWC/data_seed$data_seed/$development_size/train.npy"
+export l_train_dataset_path=YOUR_PATH
 
-export u_train_dataset_path="/cluster/tufts/hugheslab/zhuang12/SemiSelfEvaluationProject/ML_DATA/$dataset_name/unnormalized_HWC/all_shared_unlabeledset/u_train.npy"
+export u_train_dataset_path=YOUR_PATH
 
-export val_dataset_path="/cluster/tufts/hugheslab/zhuang12/SemiSelfEvaluationProject/ML_DATA/$dataset_name/unnormalized_HWC/data_seed$data_seed/$development_size/val.npy"
+export val_dataset_path=YOUR_PATH
 
-export test_dataset_path="/cluster/tufts/hugheslab/zhuang12/SemiSelfEvaluationProject/ML_DATA/$dataset_name/unnormalized_HWC/data_seed$data_seed/this_seed_shared_testset/test.npy"
+export test_dataset_path=YOUR_PATH
 
 
 #shared config

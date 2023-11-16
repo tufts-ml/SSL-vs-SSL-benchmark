@@ -91,7 +91,7 @@ class WideResNet(nn.Module):
         self.block3 = NetworkBlock(
             n, channels[2], channels[3], block, 2, drop_rate)
         
-        # 4th block (hz added)
+        # 4th block
         self.block4 = NetworkBlock(
             n, channels[3], channels[4], block, 2, drop_rate)
         
