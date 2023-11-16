@@ -168,22 +168,12 @@ def train_one_epoch(args, weights, labeledtrain_loader, unlabeledtrain_loader, m
 #         mask = max_probs.ge(args.threshold).float()
         mask = max_probs.ge(args.threshold * (classwise_acc[targets_u] / (2. - classwise_acc[targets_u]))).float()#different than FixMatch
         select = max_probs.ge(args.threshold).long()
-#         print('max_probs: {}'.format(max_probs))
-#         print('targets_u: {}'.format(targets_u)) #max_idx is the targets_u in hz's FixMatch codebase
-#         print('classwise_acc: {}'.format(classwise_acc))
-#         print('classwise_acc[targets_u]: {}'.format(classwise_acc[targets_u]))
-#         print('2. - classwise_acc[targets_u]: {}'.format(2. - classwise_acc[targets_u]))
-#         print('args.threshold * (classwise_acc[targets_u] / (2. - classwise_acc[targets_u]): {}'.format(args.threshold * (classwise_acc[targets_u] / (2. - classwise_acc[targets_u]))))
+
         
         unlabeledtrain_loss = (F.cross_entropy(logits_u_s, targets_u, reduction='none') * mask).mean()
         
         #############################unique to FlexMatch compared to FixMatch#############################
-#         print('epoch{} batch{} select: {}'.format(epoch, batch_idx, select))
-#         print('epoch{} batch{} u_idx: {}'.format(epoch, batch_idx, u_idx))
-#         print('epoch{} batch{} u_idx[select == 1]: {}'.format(epoch, batch_idx, u_idx[select == 1]))
-#         print('epoch{} batch{} u_idx[select == 1].nelement(): {}'.format(epoch, batch_idx, u_idx[select == 1].nelement()))
-#         print('epoch{} batch{} targets_u: {}'.format(epoch, batch_idx, targets_u))
-#         print('epoch{} batch{} targets_u[select == 1]: {}'.format(epoch, batch_idx, targets_u[select == 1])) 
+
         if u_idx[select == 1].nelement() != 0:
             selected_label[u_idx[select == 1]] = targets_u[select == 1]
             

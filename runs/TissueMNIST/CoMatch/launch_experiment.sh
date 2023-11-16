@@ -21,7 +21,6 @@ export patience=20
 
 export implementation='CoMatch'
 
-#hyperparameters inherit from Echo_ClinicalManualScript_torch style
 export resume='last_checkpoint.pth.tar'
 
 #experiment setting
@@ -33,7 +32,6 @@ export training_seed=0
 export train_dir="$ROOT_PATH/experiments/$dataset_name/data_seed$data_seed/training_seed$training_seed/$implementation"
 mkdir -p $train_dir
 
-# export script="$ROOT_PATH.src.$implementation.$implementation.py"
 export script="src.$implementation.$implementation"
 
 
@@ -43,13 +41,13 @@ export start_epoch=0
 
 
 #data paths
-export l_train_dataset_path="/cluster/tufts/hugheslab/zhuang12/SemiSelfEvaluationProject/ML_DATA/MedMNIST/$dataset_name/unnormalized_HWC/data_seed$data_seed/nlabels400_val400_realistic/l_train.npy"
+export l_train_dataset_path=YOUR_PATH
 
-export u_train_dataset_path="/cluster/tufts/hugheslab/zhuang12/SemiSelfEvaluationProject/ML_DATA/MedMNIST/$dataset_name/unnormalized_HWC/data_seed$data_seed/nlabels400_val400_realistic/u_train.npy"
+export u_train_dataset_path=YOUR_PATH
 
-export val_dataset_path="/cluster/tufts/hugheslab/zhuang12/SemiSelfEvaluationProject/ML_DATA/MedMNIST/$dataset_name/unnormalized_HWC/data_seed$data_seed/nlabels400_val400_realistic/val.npy"
+export val_dataset_path=YOUR_PATH
 
-export test_dataset_path="/cluster/tufts/hugheslab/zhuang12/SemiSelfEvaluationProject/ML_DATA/MedMNIST/$dataset_name/unnormalized_HWC/data_seed$data_seed/nlabels400_val400_realistic/test.npy"
+export test_dataset_path=YOUR_PATH
 
 
 #shared config

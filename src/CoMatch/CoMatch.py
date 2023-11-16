@@ -58,7 +58,7 @@ parser.add_argument('--resume', default='', type=str,
 parser.add_argument('--resume_checkpoint_fullpath', default='', type=str,
                     help='fullpath of the checkpoint to resume from(default: none)')
 
-parser.add_argument('--train_dir', default='/cluster/tufts/hugheslab/zhuang12/Echo_ClinicalManualScript_1112/experiments/ViewClassifier/seed0/DEV479',
+parser.add_argument('--train_dir', 
                     help='directory to output the result')
 
 
