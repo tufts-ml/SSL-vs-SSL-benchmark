@@ -1,5 +1,5 @@
 # SSL-vs-SSL-benchmark
-Code for benchmark comparing self-supervised and semi-supervised deep classifiers for medical images
+This is the code for benchmark comparing self-supervised and semi-supervised deep classifiers for medical images
 
 
 # Setup
