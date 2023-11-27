@@ -48,13 +48,24 @@ class ModelBase(nn.Module):
     (i) replaces conv1 with kernel=3, str=1
     (ii) removes pool1
     """
-    def __init__(self, feature_dim=128, arch=None, bn_splits=16):
+    def __init__(self, feature_dim=128, arch=None, bn_splits=8):
         super(ModelBase, self).__init__()
 
-        resnet = torchvision.models.resnet18(pretrained=False)
-        self.backbone = nn.Sequential(*list(resnet.children())[:-1])
-        self.projection_head = nn.Sequential(nn.Linear(512, 512, bias=False), nn.BatchNorm1d(512),
-                               nn.ReLU(inplace=True), nn.Linear(512, feature_dim, bias=True))
+        # use split batchnorm
+        #norm_layer = partial(SplitBatchNorm, num_splits=8)
+        #resnet_arch = getattr(resnet, 'resnet18')
+        #net = resnet_arch(num_classes=128, norm_layer=norm_layer)
+        #self.backbone = nn.Sequential(*list(net.children())[:-1])
+        
+        #resnet = torchvision.models.resnet18()
+        #self.backbone = nn.Sequential(*list(resnet.children())[:-1])
+        #self.projection_head = nn.Sequential(nn.Linear(512, 512, bias=False), nn.BatchNorm1d(512), nn.ReLU(inplace=True), nn.Linear(512, feature_dim, bias=True))
+                               
+        resnet = ResNetGenerator("resnet-18", 1, num_splits=8)
+        self.backbone = nn.Sequential(*list(resnet.children())[:-1], nn.AdaptiveAvgPool2d(1))
+
+        # create a moco model based on ResNet
+        self.projection_head = MoCoProjectionHead(512, 512, 128)
                                
     def forward(self, x):
 

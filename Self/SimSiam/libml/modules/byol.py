@@ -1,5 +1,7 @@
 """
 MIT License
+
+Copyright (c) 2020 Phil Wang
 https://github.com/lucidrains/byol-pytorch/
 
 Adjusted to de-couple for data loading, parallel training

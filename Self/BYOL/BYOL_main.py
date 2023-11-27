@@ -83,7 +83,53 @@ def train(args, net, data_loader, train_optimizer, scheduler):
 
 
 # test for one epoch, use weighted knn to find the most similar images' label to assign the test image
-def test(net, memory_data_loader, test_data_loader):
+def pred_val(net, memory_data_loader, test_data_loader):
+    net.eval()
+    total_top1, total_top5, total_num, feature_bank, label_bank = 0.0, 0.0, 0, [], []
+    val_max_all = []
+    reg_all = []
+    with torch.no_grad():
+        # generate feature bank
+        for data, _, target in tqdm(memory_data_loader, desc='Feature extracting'):
+            #print(target)
+            feature, rep = net(data.to(device, non_blocking=True), _, return_embedding = True)
+            feature_bank.append(feature)
+            label_bank.append(target)
+            
+        # [D, N]
+        feature_bank = torch.cat(feature_bank, dim=0).t().contiguous()
+        label_bank = torch.cat(label_bank, dim=0).t().contiguous()
+        # [N]
+
+        feature_labels = torch.tensor(label_bank, device=feature_bank.device) 
+        feature_bank = feature_bank.T.detach().cpu().numpy()
+        label_bank = label_bank.numpy()
+        for i in range(10):
+            reg = log_n_uniform(-1, 1)
+            clf = LogisticRegression(random_state=0, class_weight='balanced', C = reg).fit(feature_bank, label_bank)
+            
+            test_bar = tqdm(test_data_loader)
+            label_test_bank = []
+            label_test_pred = []
+            for data, _, target in test_bar:
+                total_num = total_num + len(data)
+                data, target = data.to(device, non_blocking=True), target.to(device, non_blocking=True)
+                feature, rep = net(data, _, return_embedding = True)
+                #top_1 = len(np.where(clf.predict(feature.cpu().detach().numpy()) == target.cpu().numpy())[0])
+                #total_top1 += top_1
+                #print(total_top1)
+                label_test_bank = label_test_bank + list(target.cpu().detach().numpy())
+                label_test_pred = label_test_pred + list(clf.predict(feature.cpu().detach().numpy()))
+                
+            balanced_accuracy = calculate_balanced_accuracy(label_test_pred, label_test_bank)
+            print(balanced_accuracy, reg)
+            val_max_all.append(balanced_accuracy)
+            reg_all.append(reg)
+            
+    return val_max_all[int(np.where(val_max_all == max(val_max_all))[0][0])], reg_all[int(np.where(val_max_all == max(val_max_all))[0][0])]
+
+# test for one epoch, use weighted knn to find the most similar images' label to assign the test image
+def pred_test(net, memory_data_loader, test_data_loader, reg):
     net.eval()
     total_top1, total_top5, total_num, feature_bank, label_bank = 0.0, 0.0, 0, [], []
     with torch.no_grad():
@@ -102,7 +148,7 @@ def test(net, memory_data_loader, test_data_loader):
         feature_labels = torch.tensor(label_bank, device=feature_bank.device) 
         feature_bank = feature_bank.T.detach().cpu().numpy()
         label_bank = label_bank.numpy()
-        clf = LogisticRegression(random_state=0, class_weight='balanced').fit(feature_bank, label_bank)
+        clf = LogisticRegression(random_state=0, class_weight='balanced', C = reg).fit(feature_bank, label_bank)
         
         test_bar = tqdm(test_data_loader)
         label_test_bank = []
@@ -130,6 +176,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', default=400, type=int, help='Number of sweeps over the dataset to train')
     parser.add_argument('--dataset_name', default='cifar10', type=str, help='Choose loss function')
     parser.add_argument('--patience', default=20, type=int, help='Earlystop patience')
+    parser.add_argument('--seed', default=0, type=int, help='Earlystop patience')
 
 
     # args parse
@@ -148,81 +195,81 @@ if __name__ == '__main__':
     val_loader = DataLoader(test_data, batch_size=batch_size, num_workers = 12, shuffle=False, pin_memory=True)
     test_loader = DataLoader(test_data_2, batch_size=batch_size, num_workers = 12, shuffle=False, pin_memory=True)
     
-    for seed in range(0, 5):
-        np.random.seed(seed=seed)
-        start = time.time()
-        epoch_all = 0
-        num_hyper_param = 0
-        res_10000 = np.zeros((10000, 5))
-        hyper_param = np.zeros((100, 3))
-        print(seed)
-        all_time = 50
-            
-        flag = 0
-            
-        while (time.time() - start)/3600 <= all_time:
-            lr = log_n_uniform(-4.5,-1.5)
-            wd = log_n_uniform(-6.5,-3.5)
-            mad = uniform(0.99,0.9999)
-            flag = flag + 1
-            
-            hyper_param[num_hyper_param][0] = lr
-            hyper_param[num_hyper_param][1] = wd
-            hyper_param[num_hyper_param][2] = mad
-            num_hyper_param += 1
-            np.save("BYOL_hyper_param", hyper_param)
-            
-            resnet = models.resnet18(pretrained=False)
-            
-            model = BYOL(
-            resnet,
-            image_size = 32,
-            hidden_layer = 'avgpool',
-            projection_size = 256,           # the projection size
-            projection_hidden_size = 4096,   # the hidden dimension of the MLP for both the projection and prediction
-            moving_average_decay = mad    # the moving average decay factor for the target encoder, already set at what paper recommends
-            ).cuda()
+    seed = args.seed
+    np.random.seed(seed=seed)
+    start = time.time()
+    epoch_all = 0
+    num_hyper_param = 0
+    res_10000 = np.zeros((10000, 5))
+    hyper_param = np.zeros((100, 3))
+    print(seed)
+    all_time = 50
         
-            optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0, last_epoch=-1)
+    flag = 0
+        
+    while (time.time() - start)/3600 <= all_time:
+        lr = log_n_uniform(-4.5,-1.5)
+        wd = log_n_uniform(-6.5,-3.5)
+        mad = uniform(0.99,0.9999)
+        flag = flag + 1
+        
+        hyper_param[num_hyper_param][0] = lr
+        hyper_param[num_hyper_param][1] = wd
+        hyper_param[num_hyper_param][2] = mad
+        num_hyper_param += 1
+        np.save("BYOL_hyper_param_"+str(seed), hyper_param)
+        
+        resnet = models.resnet18(pretrained=False)
+        
+        model = BYOL(
+        resnet,
+        image_size = 32,
+        hidden_layer = 'avgpool',
+        projection_size = 256,           # the projection size
+        projection_hidden_size = 4096,   # the hidden dimension of the MLP for both the projection and prediction
+        moving_average_decay = mad    # the moving average decay factor for the target encoder, already set at what paper recommends
+        ).cuda()
     
-    
-            early_stopping = EarlyStopping(patience=args.patience, verbose=True)
-            best_acc = 0
-    
-            train_loss = 0
-            val_acc_1 = 0
-            test_acc_1 = 0
-            epoch = 0
-                
-    
-            for epoch in range(1, epochs + 1):
-                val_acc_1 = test(model, memory_loader, val_loader)
-                print(epoch, val_acc_1)
-                
-                if best_acc < val_acc_1:
-                    best_acc = val_acc_1
-                
-                test_acc_1 = test(model, memory_loader, test_loader)
-    
-                train_loss = train(args, model, train_loader, optimizer, scheduler)
-                print(train_loss)
+        optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0, last_epoch=-1)
+
+
+        early_stopping = EarlyStopping(patience=args.patience, verbose=True)
+        best_acc = 0
+
+        train_loss = 0
+        val_acc_1 = 0
+        test_acc_1 = 0
+        epoch = 0
+             
+
+        for epoch in range(1, epochs + 1):
+            val_acc_1, reg = pred_val(model, memory_loader, val_loader)
+            print(epoch, val_acc_1, reg)
             
-                
-                error_rate = 1 - val_acc_1
-                early_stopping(error_rate, model) # you can replace error_rate with val loss
-                if early_stopping.early_stop:
-                    break
-                
-    
-                res_10000[epoch_all][0] = train_loss
-                res_10000[epoch_all][1] = val_acc_1
-                res_10000[epoch_all][2] = test_acc_1
-                res_10000[epoch_all][3] = (time.time() - start)/60
-                res_10000[epoch_all][4] = flag
-                np.save("BYOL_"+str(seed), res_10000)
-                
-                epoch_all += 1
+            if best_acc < val_acc_1:
+                best_acc = val_acc_1
             
-                
-                
+            test_acc_1 = pred_test(model, memory_loader, test_loader, reg)
+
+            train_loss = train(args, model, train_loader, optimizer, scheduler)
+            print(train_loss)
+        
+            
+            error_rate = 1 - val_acc_1
+            early_stopping(error_rate, model) # you can replace error_rate with val loss
+            if early_stopping.early_stop:
+                break
+            
+
+            res_10000[epoch_all][0] = train_loss
+            res_10000[epoch_all][1] = val_acc_1
+            res_10000[epoch_all][2] = test_acc_1
+            res_10000[epoch_all][3] = (time.time() - start)/60
+            res_10000[epoch_all][4] = flag
+            np.save("BYOL_"+str(seed), res_10000)
+            
+            epoch_all += 1
+        
+            
+            
