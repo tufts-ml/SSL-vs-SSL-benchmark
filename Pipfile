@@ -1,0 +1,38 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[[source]]
+url = "https://download.pytorch.org/whl/cpu/"
+verify_ssl = true
+name = "pytorch_cpu"
+
+[[source]]
+url = "https://download.pytorch.org/whl/cu121"
+verify_ssl = true
+name = "pytorch_cu121"
+
+[packages]
+matplotlib = "*"
+numpy = "*"
+autopep8 = "*"
+flake8 = "*"
+pep8-naming = "*"
+pytest = "*"
+seaborn = "*"
+tensorboard = "*"
+scikit-learn = "*"
+pandas = "*"
+tqdm = "*"
+
+[torch_cpu]
+torch = {index="pytorch_cpu"}
+torchvision = {index="pytorch_cpu"}
+
+[torch_cu121]
+torch = {index="pytorch_cu121"}
+torchvision = {index="pytorch_cu121"}
+
+[requires]
+python_version = "3.10"
