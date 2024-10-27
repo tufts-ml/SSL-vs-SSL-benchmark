@@ -5,7 +5,10 @@
 # $ bash launch_experiments.sh ACTION_NAME
 #
 # where ACTION_NAME is either 'list' or 'submit' or 'run_here'
-export PYTHONPATH="C:\\Users\\lakja\\Desktop\\hugheslab\\SSL-vs-SSL-benchmark;$PYTHONPATH"
+export PYTHONPATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd):$PYTHONPATH"
+
+# Print for verification
+echo "PYTHONPATH: $PYTHONPATH"
 
 if [[ -z $1 ]]; then
     ACTION_NAME='list'
