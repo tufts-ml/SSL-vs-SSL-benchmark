@@ -5,6 +5,7 @@
 # $ bash launch_experiments.sh ACTION_NAME
 #
 # where ACTION_NAME is either 'list' or 'submit' or 'run_here'
+export PYTHONPATH="C:\\Users\\lakja\\Desktop\\hugheslab\\SSL-vs-SSL-benchmark;$PYTHONPATH"
 
 if [[ -z $1 ]]; then
     ACTION_NAME='list'
@@ -12,7 +13,7 @@ else
     ACTION_NAME=$1
 fi
 
-export resized_shape=384
+#export resized_shape=384
 export num_workers=0
 export total_hour=100
 export num_classes=4
@@ -31,7 +32,7 @@ export training_seed=0
 export train_dir="LABELONLYBASELINE"
 mkdir -p $train_dir
 
-export script="src.$implementation.$implementation"
+export script="src.LabelOnlyBaseline.LabelOnlyBaseline"
 
 
 export arch='resnet18'
@@ -40,17 +41,12 @@ export start_epoch=0
 
 
 #data paths
-export l_train_dataset_path=YOUR_PATH
-
-
-export val_dataset_path=YOUR_PATH
-
-export test_dataset_path=YOUR_PATH
-
+export l_train_dataset_path='IDRID/train_data.npy'
+export val_dataset_path='IDRID/val_data.npy'
+export test_dataset_path='IDRID/test_data.npy'
 
 #shared config
 export labeledtrain_batchsize=64 #default
-
 
 #PL config, candidate hypers to search
 export optimizer_type='Adam'

@@ -3,7 +3,7 @@
 # Pass along all ENV variables as arguments to my Python script
 export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
 python -m $script \
-    --resized_shape $resized_shape\
+    # --resized_shape $resized_shape\
     --num_workers $num_workers\
     --total_hour $total_hour\
     --use_pretrained $use_pretrained\
