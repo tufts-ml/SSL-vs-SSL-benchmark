@@ -2,8 +2,8 @@
 
 # Pass along all ENV variables as arguments to my Python script
 export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
-echo "Training Directory: $TRAIN_DIR"
-echo "Labeled Train Dataset Path: $L_TRAIN_DATASET_PATH"
+echo "Training Directory: $train_dir"
+echo "Labeled Train Dataset Path: $l_train_dataset_path"
 
 
 python -m $script "$@"\
