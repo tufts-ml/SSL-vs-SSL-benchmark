@@ -214,12 +214,12 @@ def main(args):
                              padding=int(image_size*0.125),
                              padding_mode='reflect'),
         transforms.ToTensor(),
-        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+        # transforms.Normalize(mean=dataset_mean, std=dataset_std)
     ])
     
     transform_eval = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+        # transforms.Normalize(mean=dataset_mean, std=dataset_std)
     ])
     
   
