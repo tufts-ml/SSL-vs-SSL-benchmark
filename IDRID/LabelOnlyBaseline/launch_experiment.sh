@@ -35,7 +35,7 @@ export training_seed=0
 export train_dir="LABELONLYBASELINE"
 mkdir -p $train_dir
 
-export script='src.LabelOnlyBaseline.LabelOnlyBaseline "$@"'
+export script='src.LabelOnlyBaseline.LabelOnlyBaseline'
 
 
 export arch='resnet18'
