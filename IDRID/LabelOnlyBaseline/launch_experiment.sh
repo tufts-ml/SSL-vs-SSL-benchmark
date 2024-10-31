@@ -6,6 +6,8 @@
 #
 # where ACTION_NAME is either 'list' or 'submit' or 'run_here'
 
+export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
+
 if [[ -z $1 ]]; then
     ACTION_NAME='list'
 else
@@ -62,8 +64,5 @@ if [[ $ACTION_NAME == 'submit' ]]; then
 
 elif [[ $ACTION_NAME == 'run_here' ]]; then
     ## Use this line to just run interactively
-    echo "Training Directory: $TRAIN_DIR"
-    echo "Labeled Train Dataset Path: $L_TRAIN_DATASET_PATH"
-
     bash ./do_experiment.slurm
 fi
