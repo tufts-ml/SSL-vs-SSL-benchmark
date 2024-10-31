@@ -23,7 +23,7 @@ config = {
 'IDRID': {'dataset_mean':(0.5, 0.5, 0.5),
         'dataset_std':(0.5, 0.5, 0.5),
         'image_size':384,
-        'class_weights':[0.5, 0.5],
+        'class_weights':[0.2, 0.2, 0.2, 0.2, 0.2],
         'nimg_per_epoch':103,
         'num_classes':5}
 }
