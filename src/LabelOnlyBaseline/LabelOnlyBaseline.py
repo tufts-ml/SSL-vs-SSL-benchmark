@@ -223,7 +223,9 @@ def main(args):
     ])
     
   
-
+    print("-----------------Start training-----------------")
+    print('args.l_train_dataset_path: {}'.format(args.l_train_dataset_path))
+    print('args.val_dataset_path: {}'.format(args.val_dataset_path))
     l_train_dataset = dataset(args.dataset_name, args.l_train_dataset_path, transform_fn=transform_labeledtrain)
     val_dataset = dataset(args.dataset_name, args.val_dataset_path, transform_fn=transform_eval)
     test_dataset = dataset(args.dataset_name, args.test_dataset_path, transform_fn=transform_eval)
