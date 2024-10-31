@@ -365,7 +365,7 @@ def main(args):
             try:
                 os.path.isfile(args.resume_checkpoint_fullpath)
                 logger.info("==> Resuming from checkpoint..")
-                checkpoint = torch.load(args.resume_checkpoint_fullpath)
+                checkpoint = torch.load(args.resume_checkpoint_fullpath, weights_only=True)
                 args.start_epoch = checkpoint['epoch']
                 model.load_state_dict(checkpoint['state_dict'])
 
