@@ -520,12 +520,16 @@ if __name__ == '__main__':
         raise ValueError('Not Using GPU')
     #     device = "cpu"
     
-    logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO)
+    print('Training dataset path:', args.l_train_dataset_path)
+    print('Validation dataset path:', args.val_dataset_path)
+    print('Test dataset path:', args.test_dataset_path)
 
-    logger.info(dict(args._get_kwargs()))
+    # logging.basicConfig(
+    # format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+    # datefmt="%m/%d/%Y %H:%M:%S",
+    # level=logging.INFO)
+
+    # logger.info(dict(args._get_kwargs()))
     
     if args.training_seed is not None:
         print('setting training seed{}'.format(args.training_seed), flush=True)
