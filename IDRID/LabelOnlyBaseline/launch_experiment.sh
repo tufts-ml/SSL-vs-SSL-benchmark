@@ -6,6 +6,7 @@
 #
 # where ACTION_NAME is either 'list' or 'submit' or 'run_here'
 
+export ROOT_PATH='/cluster/tufts/hugheslab/ljain01/SSL-vs-SSL-benchmark'
 export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
 
 if [[ -z $1 ]]; then
