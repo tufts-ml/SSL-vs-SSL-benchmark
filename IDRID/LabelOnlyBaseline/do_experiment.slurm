@@ -7,7 +7,6 @@ echo "Labeled Train Dataset Path: $l_train_dataset_path"
 
 
 python -m $script "$@"\
-    # --resized_shape $resized_shape\
     --num_workers $num_workers\
     --total_hour $total_hour\
     --use_pretrained $use_pretrained\
