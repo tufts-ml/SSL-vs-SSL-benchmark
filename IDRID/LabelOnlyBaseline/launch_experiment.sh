@@ -43,9 +43,9 @@ export start_epoch=0
 
 
 #data paths
-export l_train_dataset_path='IDRID.LabelOnlyBaseline.train_data.npy'
-export val_dataset_path='IDRID.LabelOnlyBaseline.val_data.npy'
-export test_dataset_path='IDRID.LabelOnlyBaseline.test_data.npy'
+export l_train_dataset_path='IDRID.train_data.npy'
+export val_dataset_path='IDRID.val_data.npy'
+export test_dataset_path='IDRID.test_data.npy'
 
 #shared config
 export labeledtrain_batchsize=64 #default
