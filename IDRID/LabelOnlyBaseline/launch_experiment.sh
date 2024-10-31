@@ -5,9 +5,9 @@
 # $ bash launch_experiment.sh ACTION_NAME
 #
 # where ACTION_NAME is either 'list' or 'submit' or 'run_here'
+
 export PYTHONPATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd):$PYTHONPATH"
 
-# Print for verification
 echo "PYTHONPATH: $PYTHONPATH"
 
 if [[ -z $1 ]]; then
@@ -44,9 +44,9 @@ export start_epoch=0
 
 
 #data paths
-export l_train_dataset_path='IDRID/train_data.npy'
-export val_dataset_path='IDRID/val_data.npy'
-export test_dataset_path='IDRID/test_data.npy'
+export l_train_dataset_path='src.LabelOnlyBaseline.train_data.npy'
+export val_dataset_path='src.LabelOnlyBaseline.val_data.npy'
+export test_dataset_path='src.LabelOnlyBaseline.test_data.npy'
 
 #shared config
 export labeledtrain_batchsize=64 #default
