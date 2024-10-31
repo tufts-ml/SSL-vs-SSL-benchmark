@@ -16,9 +16,9 @@ else
 fi
 
 #export resized_shape=384
-export num_workers=0
+export num_workers=12
 export total_hour=100
-export num_classes=4
+export num_classes=5
 export use_pretrained='False'
 export patience=20
 

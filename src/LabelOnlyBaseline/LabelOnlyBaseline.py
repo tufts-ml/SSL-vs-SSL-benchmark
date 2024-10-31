@@ -170,6 +170,7 @@ def create_model(args):
         from torchvision import models
         
         model = models.resnet18(pretrained=args.use_pretrained)
+        model.conv1 = torch.nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         #https://stackoverflow.com/questions/52548174/how-to-remove-the-last-fc-layer-from-a-resnet-model-in-pytorch
         model.fc = torch.nn.Linear(512, args.num_classes)
         
