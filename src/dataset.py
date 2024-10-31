@@ -11,6 +11,8 @@ from PIL import Image
 class data:
     def __init__(self, dataset_name, dataset_path, transform_fn=None):
         if dataset_name in ['TissueMNIST','PathMNIST','IDRID']:
+            print('Loading dataset:', dataset_name)
+            print('Dataset path:', dataset_path)
             self.dataset = np.load(dataset_path, allow_pickle=True).item() #need to use HWC version of the data
         elif dataset_name == 'TMED2':
             self.dataset = np.load(dataset_path, allow_pickle=True) #need to use HWC version of the data

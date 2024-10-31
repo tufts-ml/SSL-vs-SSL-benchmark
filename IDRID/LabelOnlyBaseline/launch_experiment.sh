@@ -2,7 +2,7 @@
 #
 # Usage
 # -----
-# $ bash launch_experiments.sh ACTION_NAME
+# $ bash launch_experiment.sh ACTION_NAME
 #
 # where ACTION_NAME is either 'list' or 'submit' or 'run_here'
 export PYTHONPATH="C:\\Users\\lakja\\Desktop\\hugheslab\\SSL-vs-SSL-benchmark;$PYTHONPATH"
