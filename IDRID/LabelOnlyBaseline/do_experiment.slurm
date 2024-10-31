@@ -2,6 +2,9 @@
 
 # Pass along all ENV variables as arguments to my Python script
 export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
+echo "Training Directory: $TRAIN_DIR"
+echo "Labeled Train Dataset Path: $L_TRAIN_DATASET_PATH"
+
 
 python -m $script "$@"\
     # --resized_shape $resized_shape\

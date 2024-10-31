@@ -507,8 +507,6 @@ if __name__ == '__main__':
     args.use_pretrained = str2bool(args.use_pretrained)
     args.nimg_per_epoch = config[args.dataset_name]['nimg_per_epoch'] #total size of labeled + unlabeled set for TissueMNIST
     args.num_classes = config[args.dataset_name]['num_classes']
-
-    print("Parsed arguments:", args)
     
     
     cuda = torch.cuda.is_available()
@@ -528,8 +526,6 @@ if __name__ == '__main__':
         level=logging.INFO)
 
     logger.info(dict(args._get_kwargs()))
-
-    
     
     if args.training_seed is not None:
         print('setting training seed{}'.format(args.training_seed), flush=True)
