@@ -43,9 +43,9 @@ export start_epoch=0
 
 
 #data paths
-export l_train_dataset_path='IDRID.train_data.npy'
-export val_dataset_path='IDRID.val_data.npy'
-export test_dataset_path='IDRID.test_data.npy'
+export l_train_dataset_path='/cluster/tufts/hugheslab/ljain01/SSL-vs-SSL-benchmark/IDRID/train_data.npy'
+export val_dataset_path='/cluster/tufts/hugheslab/ljain01/SSL-vs-SSL-benchmark/IDRID/val_data.npy'
+export test_dataset_path='/cluster/tufts/hugheslab/ljain01/SSL-vs-SSL-benchmark/IDRID/test_data.npy'
 
 #shared config
 export labeledtrain_batchsize=64 #default
