@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser()
 #experiment setting
-parser.add_argument('--dataset_name', default='PathMNIST', type=str, help='name of dataset')
+parser.add_argument('--dataset_name', required=True, type=str, help='name of dataset')
 parser.add_argument('--data_seed', default=0, type=int, help='random seed data partitioning procedure')
 parser.add_argument('--training_seed', default=0, type=int, help='random seed for training procedure')
 
@@ -62,9 +62,9 @@ parser.add_argument('--train_dir',
 
 
 #data paths
-parser.add_argument('--l_train_dataset_path', default='', type=str)
-parser.add_argument('--val_dataset_path', default='', type=str)
-parser.add_argument('--test_dataset_path', default='', type=str)
+parser.add_argument('--l_train_dataset_path', required=True, type=str)
+parser.add_argument('--val_dataset_path', required=True, type=str)
+parser.add_argument('--test_dataset_path', required=True, type=str)
 
 #shared config
 parser.add_argument('--labeledtrain_batchsize', default=50, type=int)
