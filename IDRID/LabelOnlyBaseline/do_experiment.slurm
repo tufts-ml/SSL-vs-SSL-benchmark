@@ -2,6 +2,10 @@
 
 # Pass along all ENV variables as arguments to my Python script
 export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
+echo "Train dataset path: $l_train_dataset_path"
+echo "Validation dataset path: $val_dataset_path"
+echo "Test dataset path: $test_dataset_path"
+
 python -m $script \
     # --resized_shape $resized_shape\
     --num_workers $num_workers\
