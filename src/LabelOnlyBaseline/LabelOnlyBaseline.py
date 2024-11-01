@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser()
 #experiment setting
-parser.add_argument('--dataset_name', required=True, type=str, help='name of dataset')
+parser.add_argument('--dataset_name', default='PathMNIST', type=str, help='name of dataset')
 parser.add_argument('--data_seed', default=0, type=int, help='random seed data partitioning procedure')
 parser.add_argument('--training_seed', default=0, type=int, help='random seed for training procedure')
 
@@ -62,9 +62,9 @@ parser.add_argument('--train_dir',
 
 
 #data paths
-parser.add_argument('--l_train_dataset_path', required=True, type=str)
-parser.add_argument('--val_dataset_path', required=True, type=str)
-parser.add_argument('--test_dataset_path', required=True, type=str)
+parser.add_argument('--l_train_dataset_path', default='', type=str)
+parser.add_argument('--val_dataset_path', default='', type=str)
+parser.add_argument('--test_dataset_path', default='', type=str)
 
 #shared config
 parser.add_argument('--labeledtrain_batchsize', default=50, type=int)
@@ -224,9 +224,6 @@ def main(args):
     ])
     
   
-    print("-----------------Start training-----------------")
-    print('args.l_train_dataset_path: {}'.format(args.l_train_dataset_path))
-    print('args.val_dataset_path: {}'.format(args.val_dataset_path))
     l_train_dataset = dataset(args.dataset_name, args.l_train_dataset_path, transform_fn=transform_labeledtrain)
     val_dataset = dataset(args.dataset_name, args.val_dataset_path, transform_fn=transform_eval)
     test_dataset = dataset(args.dataset_name, args.test_dataset_path, transform_fn=transform_eval)
