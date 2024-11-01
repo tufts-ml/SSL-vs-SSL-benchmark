@@ -93,7 +93,7 @@ parser.add_argument('--use_ema', action='store_true', default=True,
 parser.add_argument('--ema_decay', default=0.999, type=float,
                     help='EMA decay rate')
 
-parser.add_argument('--total_hour', default=50, type=int, help='total hours to run')
+parser.add_argument('--total_hour', default=50, type=float, help='total hours to run')
 parser.add_argument('--num_workers', default=12, type=int)
 
 
