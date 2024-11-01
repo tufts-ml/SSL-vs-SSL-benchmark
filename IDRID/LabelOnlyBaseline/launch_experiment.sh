@@ -16,7 +16,7 @@ else
 fi
 
 #export resized_shape=384
-export num_workers=12
+export num_workers=2
 export total_hour=100
 export num_classes=5
 export use_pretrained='False'
@@ -38,7 +38,7 @@ export script='src.LabelOnlyBaseline.LabelOnlyBaseline'
 
 
 export arch='resnet18'
-export train_epoch=200 
+export train_epoch=20
 export start_epoch=0
 
 
@@ -48,7 +48,7 @@ export val_dataset_path='/cluster/tufts/hugheslab/ljain01/SSL-vs-SSL-benchmark/I
 export test_dataset_path='/cluster/tufts/hugheslab/ljain01/SSL-vs-SSL-benchmark/IDRID/test_data.npy'
 
 #shared config
-export labeledtrain_batchsize=64 #default
+export labeledtrain_batchsize=32 #default
 
 #PL config, candidate hypers to search
 export optimizer_type='Adam'

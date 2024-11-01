@@ -24,6 +24,6 @@ config = {
         'dataset_std':(0.5, 0.5, 0.5),
         'image_size':384,
         'class_weights':[0.2, 0.2, 0.2, 0.2, 0.2],
-        'nimg_per_epoch':103,
+        'nimg_per_epoch':413,
         'num_classes':5}
 }
