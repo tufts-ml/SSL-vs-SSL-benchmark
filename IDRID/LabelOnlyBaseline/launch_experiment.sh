@@ -17,7 +17,7 @@ fi
 
 #export resized_shape=384
 export num_workers=2
-export total_hour=0.05
+export total_hour=0.2
 export num_classes=5
 export use_pretrained='False'
 export patience=20
@@ -38,7 +38,7 @@ export script='src.LabelOnlyBaseline.LabelOnlyBaseline'
 
 
 export arch='resnet18'
-export train_epoch=20
+export train_epoch=50
 export start_epoch=0
 
 
