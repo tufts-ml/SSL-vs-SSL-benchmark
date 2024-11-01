@@ -17,7 +17,7 @@ fi
 
 #export resized_shape=384
 export num_workers=2
-export total_hour=100
+export total_hour=0.05
 export num_classes=5
 export use_pretrained='False'
 export patience=20
