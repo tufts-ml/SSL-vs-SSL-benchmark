@@ -25,6 +25,7 @@ tensorboard = "*"
 scikit-learn = "*"
 pandas = "*"
 tqdm = "*"
+ipykernel = "*"
 
 [torch_cpu]
 torch = {index="pytorch_cpu"}
