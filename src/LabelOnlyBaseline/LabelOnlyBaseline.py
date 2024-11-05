@@ -28,7 +28,7 @@ from torchvision import transforms
 
 from torch.utils.tensorboard import SummaryWriter
 
-from src.dataset import data as dataset
+from src.dataset_new import data as dataset
 from src.LabelOnlyBaseline.libml.utils import save_pickle
 from src.LabelOnlyBaseline.libml.utils import train_one_epoch, eval_model
 from src.LabelOnlyBaseline.libml.utils import EarlyStopping
@@ -65,6 +65,7 @@ parser.add_argument('--train_dir',
 parser.add_argument('--l_train_dataset_path', default='', type=str)
 parser.add_argument('--val_dataset_path', default='', type=str)
 parser.add_argument('--test_dataset_path', default='', type=str)
+parser.add_argument('--root_dataset_path', default='', type=str)
 
 #shared config
 parser.add_argument('--labeledtrain_batchsize', default=50, type=int)
@@ -224,9 +225,17 @@ def main(args):
     
   
 
-    l_train_dataset = dataset(args.dataset_name, args.l_train_dataset_path, transform_fn=transform_labeledtrain)
-    val_dataset = dataset(args.dataset_name, args.val_dataset_path, transform_fn=transform_eval)
-    test_dataset = dataset(args.dataset_name, args.test_dataset_path, transform_fn=transform_eval)
+    l_train_dataset = dataset(csv_file=args.l_train_dataset_path,
+                              root_dir=args.root_dataset_path,
+                              transform=transform_labeledtrain)
+    
+    val_dataset = dataset(csv_file=args.val_dataset_path,
+                          root_dir=args.root_dataset_path,
+                          transform=transform_eval)
+    
+    test_dataset = dataset(csv_file=args.test_dataset_path,
+                            root_dir=args.root_dataset_path,
+                            transform=transform_eval)
     
     #########################################for loop from here##################################
     
