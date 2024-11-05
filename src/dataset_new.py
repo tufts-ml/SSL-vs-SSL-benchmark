@@ -20,7 +20,7 @@ class data(Dataset):
             index = index.tolist()
 
         img_name = os.path.join(self.root_dir, self.labels.iloc[index, 0])
-        image = io.imread(img_name)
+        image = io.imread(img_name + '.jpg')
 
         #TODO: Update this to work for multi-class label data
         labels = self.labels.iloc[index, 1] 
