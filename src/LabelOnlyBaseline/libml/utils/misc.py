@@ -55,7 +55,6 @@ class EarlyStopping:
             
     
 def train_one_epoch(args, weights, labeledtrain_loader, model, optimizer, scheduler, epoch):
-    
     '''
     this implementation follow: https://github.com/perrying/realistic-ssl-evaluation-pytorch/blob/master/lib/algs/pseudo_label.py
     #same as Oliver et al 2018, which use vanilla logits when unlabeled samples has maximum probability below threshold
@@ -81,14 +80,14 @@ def train_one_epoch(args, weights, labeledtrain_loader, model, optimizer, schedu
     p_bar = tqdm(range(n_steps_per_epoch), disable=False)
     
     for batch_idx in range(n_steps_per_epoch):
- 
         try:
-            l_input, l_labels = labeledtrain_iter.next()
-        except:
+            # Get the next batch from the iterator
+            l_input, l_labels = next(labeledtrain_iter)
+        except StopIteration:
+            # Restart the iterator if there are no more batches
             labeledtrain_iter = iter(labeledtrain_loader)
-            l_input, l_labels = labeledtrain_iter.next()
-        
-        
+            l_input, l_labels = next(labeledtrain_iter)
+
         data_time.update(time.time() - end_time)
         
         ##############################################################################################################
