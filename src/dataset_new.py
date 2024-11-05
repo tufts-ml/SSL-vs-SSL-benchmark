@@ -3,33 +3,32 @@ import torch
 import pandas as pd
 from skimage import io
 import numpy as np
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
+from torch.utils.data import VisionDataset
 
-class data(Dataset):
+class CustomDataset(VisionDataset):
     def __init__(self, csv_file, root_dir, transform=None):
-        print("csv_file: ", csv_file)
-        print("root_dir: ", root_dir)
+        super().__init__(root=root_dir, transform=transform)
         self.labels = pd.read_csv(csv_file)
         self.root_dir = root_dir
         self.transform = transform
 
     def __len__(self):
-        return len(self.labels)
+        # Using shape[0] for explicit row count
+        return self.labels.shape[0]
     
     def __getitem__(self, index):
         if torch.is_tensor(index):
-            index = index.tolist()
+            index = index.item()
 
         img_name = os.path.join(self.root_dir, self.labels.iloc[index, 0])
         image = io.imread(img_name + '.jpg')
 
-        #TODO: Update this to work for multi-class label data
-        labels = self.labels.iloc[index, 1] 
-        labels = np.array([labels], dtype=np.float32)
-        sample = {'image': image, 'label': labels}
+        # Assuming single-class label at index 1
+        label = self.labels.iloc[index, 1]
+        label = np.float32(label)  # Convert label to float32 for PyTorch compatibility
 
         if self.transform:
-            sample = self.transform(sample)
-        
-        return sample
+            image = self.transform(image)
+
+        # Return as a tuple (image, label) for compatibility
+        return image, label
