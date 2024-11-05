@@ -8,6 +8,8 @@ from torchvision import transforms, utils
 
 class data(Dataset):
     def __init__(self, csv_file, root_dir, transform=None):
+        print("csv_file: ", csv_file)
+        print("root_dir: ", root_dir)
         self.labels = pd.read_csv(csv_file)
         self.root_dir = root_dir
         self.transform = transform

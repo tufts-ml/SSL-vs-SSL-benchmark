@@ -223,7 +223,8 @@ def main(args):
         transforms.Normalize(mean=dataset_mean, std=dataset_std)
     ])
     
-  
+    print(args.l_train_dataset_path)
+    print(args.root_dataset_path)
 
     l_train_dataset = dataset(csv_file=args.l_train_dataset_path,
                               root_dir=args.root_dataset_path,
