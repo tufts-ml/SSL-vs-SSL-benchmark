@@ -1,7 +1,5 @@
 import os
 import pickle
-import glob
-import pickle
 import matplotlib.pyplot as plt
 
 global_stats_dir = 'GLOBAL_STATS_FILE_PATH'
@@ -22,17 +20,18 @@ num_plots = len(hypercombo_list)
 fig, axs = plt.subplots(num_plots, 1, figsize=(10, 5 * num_plots), sharex=True)
 
 # Iterate through each hyperparameter combination
-for i, (hypercombo, test_acc, val_acc) in enumerate(zip(hypercombo_list, test_accuracy_data, val_accuracy_data)):
+for i, (hypercombo, test_acc, val_acc) in enumerate(zip(
+        hypercombo_list, test_accuracy_data, val_accuracy_data)):
     lr = hypercombo['lr']
     wd = hypercombo['wd']
-    
+
     axs[i].plot(test_acc, label='Test Accuracy', color='blue')
     axs[i].plot(val_acc, label='Validation Accuracy', color='orange')
-    
+
     axs[i].set_title(f'Learning Rate: {lr}, Weight Decay: {wd}')
     axs[i].set_ylabel('Accuracy')
     axs[i].legend()
-    
+
 # Set common x-label
 axs[-1].set_xlabel('Epochs')
 
