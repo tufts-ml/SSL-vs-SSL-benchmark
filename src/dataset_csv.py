@@ -3,11 +3,13 @@ import torch
 import pandas as pd
 from skimage import io
 import numpy as np
-from torch.utils.data import VisionDataset
+from torchvision.datasets import VisionDataset
 
-class CustomDataset(VisionDataset):
-    def __init__(self, csv_file, root_dir, transform=None):
-        super().__init__(root=root_dir, transform=transform)
+
+class ImageCSVDataset(VisionDataset):
+    def __init__(self, csv_file, root_dir, transforms=None, transform=None, target_transform=None):
+        super().__init__(root=root_dir, transforms=transforms, transform=transform,
+                         target_transform=target_transform)
         self.labels = pd.read_csv(csv_file)
         self.root_dir = root_dir
         self.transform = transform
@@ -15,7 +17,7 @@ class CustomDataset(VisionDataset):
     def __len__(self):
         # Using shape[0] for explicit row count
         return self.labels.shape[0]
-    
+
     def __getitem__(self, index):
         if torch.is_tensor(index):
             index = index.item()
@@ -27,8 +29,5 @@ class CustomDataset(VisionDataset):
         label = self.labels.iloc[index, 1]
         label = np.float32(label)  # Convert label to float32 for PyTorch compatibility
 
-        if self.transform:
-            image = self.transform(image)
-
         # Return as a tuple (image, label) for compatibility
-        return image, label
+        return self.transforms(image, label)
