@@ -25,6 +25,7 @@ tensorboard = "*"
 scikit-learn = "*"
 pandas = "*"
 tqdm = "*"
+scikit-image = "*"
 
 [torch_cpu]
 torch = {index="pytorch_cpu"}
@@ -36,3 +37,5 @@ torchvision = {index="pytorch_cu121"}
 
 [requires]
 python_version = "3.10"
+
+[dev-packages]
