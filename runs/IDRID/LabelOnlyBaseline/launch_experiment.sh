@@ -17,7 +17,7 @@ else
 fi
 
 export resized_shape=384
-export num_workers=2
+export num_workers=0
 export total_hour=1
 export num_classes=5
 export use_pretrained='False'
@@ -25,7 +25,7 @@ export patience=20
 
 export implementation='LabelOnlyBaseline'
 
-export resume='last_checkpoint.pth.tar'
+export resume='None'
 
 #experiment setting
 export dataset_name='IDRID'
@@ -44,13 +44,13 @@ export start_epoch=0
 
 
 #data paths
-export l_train_dataset_path='/cluster/tufts/hugheslab/ljain01/SSL-vs-SSL-benchmark/IDRID/Labels/training_split.csv'
-export val_dataset_path='/cluster/tufts/hugheslab/ljain01/SSL-vs-SSL-benchmark/IDRID/Labels/validation_split.csv'
-export test_dataset_path='/cluster/tufts/hugheslab/ljain01/SSL-vs-SSL-benchmark/IDRID/Labels/Testing.csv'
-export root_dataset_path='/cluster/tufts/hugheslab/ljain01/SSL-vs-SSL-benchmark/IDRID/Images'
+export l_train_dataset_path='/cluster/tufts/hugheslab/datasets/IDRID/Labels/train.csv'
+export val_dataset_path='/cluster/tufts/hugheslab/datasets/IDRID/Labels/validation.csv'
+export test_dataset_path='/cluster/tufts/hugheslab/datasets/IDRID/Labels/test.csv'
+export root_dataset_path='/cluster/tufts/hugheslab/datasets/IDRID/Images'
 
 #shared config
-export labeledtrain_batchsize=32 #default
+export labeledtrain_batchsize=16 
 
 #PL config, candidate hypers to search
 export optimizer_type='Adam'

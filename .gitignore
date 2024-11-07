@@ -1,6 +1,7 @@
 #folders
 experiments/
 ML_DATA/
+LABELONLYBASELINE/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
