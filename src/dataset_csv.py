@@ -30,4 +30,7 @@ class ImageCSVDataset(VisionDataset):
         label = np.float32(label)  # Convert label to float32 for PyTorch compatibility
 
         # Return as a tuple (image, label) for compatibility
-        return self.transforms(image, label)
+        if self.transforms is not None:
+            return self.transforms(image, label)
+        
+        return image, label
