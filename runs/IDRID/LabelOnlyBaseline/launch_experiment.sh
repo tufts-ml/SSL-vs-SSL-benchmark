@@ -32,7 +32,7 @@ export dataset_name='IDRID'
 export data_seed=0
 export training_seed=0
 
-export train_dir="LABELONLYBASELINE"
+export train_dir="/cluster/tufts/hugheslab/ljain01/experiments/LABELONLYBASELINE"
 mkdir -p $train_dir
 
 export script='src.LabelOnlyBaseline.LabelOnlyBaseline'
