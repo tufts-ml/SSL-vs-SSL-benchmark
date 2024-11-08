@@ -6,20 +6,26 @@
 #
 # where ACTION_NAME is either 'list' or 'submit' or 'run_here'
 
+export ROOT_PATH='/cluster/tufts/hugheslab/nfalic01/SSL-vs-SSL-benchmark'
+export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
+
 if [[ -z $1 ]]; then
     ACTION_NAME='list'
 else
     ACTION_NAME=$1
 fi
 
-export num_workers=0
-export total_hour=100
+export num_workers=8
+# export total_hour=100
+export total_hour=1
+export num_classes=5
 export use_pretrained='False'
 export patience=20
 
 export implementation='LabelOnlyBaseline'
 
-export resume='last_checkpoint.pth.tar'
+# export resume='last_checkpoint.pth.tar'
+export resume='None'
 
 #experiment setting
 export dataset_name='TMED2'
@@ -27,28 +33,28 @@ export data_seed=1
 export training_seed=0
 export development_size='DEV56' 
 
-export train_dir="$ROOT_PATH/experiments/$dataset_name/data_seed$data_seed/training_seed$training_seed/$implementation"
+# export train_dir="$ROOT_PATH/experiments/$dataset_name/data_seed$data_seed/training_seed$training_seed/$implementation"
+export train_dir="LABELONLYBASELINE"
 mkdir -p $train_dir
 
-export script="src.$implementation.$implementation"
+# export script="src.$implementation.$implementation"
+export script='src.LabelOnlyBaseline.LabelOnlyBaseline'
 
 
-export arch='wideresnet'
-export train_epoch=200 
+export arch='resnet18'
+export train_epoch=5 
 export start_epoch=0
 
 
 #data paths
-export l_train_dataset_path=YOUR_PATH
-
-
-export val_dataset_path=YOUR_PATH
-
-export test_dataset_path=YOUR_PATH
+export l_train_dataset_path="/cluster/tufts/hugheslab/datasets/tmed/version2/labels_training.csv"
+export val_dataset_path="/cluster/tufts/hugheslab/datasets/tmed/version2/labels_val.csv"
+export test_dataset_path="/cluster/tufts/hugheslab/datasets/tmed/version2/labels_test.csv"
+export root_dataset_path='/cluster/tufts/hugheslab/datasets/tmed/version2'
 
 
 #shared config
-export labeledtrain_batchsize=64 #default
+export labeledtrain_batchsize=128 #default
 
 
 #PL config, candidate hypers to search

@@ -10,7 +10,9 @@ class ImageCSVDataset(VisionDataset):
     def __init__(self, csv_file, root_dir, transforms=None, transform=None, target_transform=None):
         super().__init__(root=root_dir, transforms=transforms, transform=transform,
                          target_transform=target_transform)
+        # TODO: rename labels later
         self.labels = pd.read_csv(csv_file)
+        # from IPython import embed; embed()
         self.root_dir = root_dir
         self.transform = transform
 

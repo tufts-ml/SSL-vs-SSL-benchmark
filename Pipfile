@@ -26,6 +26,7 @@ scikit-learn = "*"
 pandas = "*"
 tqdm = "*"
 scikit-image = "*"
+ipython = "*"
 
 [torch_cpu]
 torch = {index="pytorch_cpu"}
