@@ -28,6 +28,7 @@ tqdm = "*"
 scikit-image = "*"
 ipykernel = "*"
 ipython = "*"
+opencv-python = "*"
 
 [torch_cpu]
 torch = {index="pytorch_cpu"}
