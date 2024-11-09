@@ -20,11 +20,12 @@ config = {
          'nimg_per_epoch':355160,
          'num_classes':5},
 
-
-'IDRID': {'dataset_mean':(0.5, 0.5, 0.5),
-        'dataset_std':(0.5, 0.5, 0.5),
-        'image_size':384,
-        'class_weights':[0.2, 0.2, 0.2, 0.2, 0.2],
-        'nimg_per_epoch':413,
-        'num_classes':5}
+    'IDRID': {
+        'dataset_mean': (0.4250, 0.2092, 0.0707),
+        'dataset_std': (0.3227, 0.1689, 0.0850),
+        'image_size': 384,
+        'class_weights': [0.0756, 0.5064, 0.0745, 0.1369, 0.2067],
+        'nimg_per_epoch': 206,
+        'num_classes': 5
+    }
 }
