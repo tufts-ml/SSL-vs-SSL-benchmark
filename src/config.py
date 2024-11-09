@@ -16,9 +16,9 @@ config = {
 'TMED2': {'dataset_mean':(0.0636, 0.0636, 0.0636),
          'dataset_std':(0.1426, 0.1426, 0.1426),
          'image_size':112,
-         'class_weights':[0.137, 0.398, 0.192, 0.273],
+         'class_weights':[0.137, 0.398, 0.192, 0.273, 0],
          'nimg_per_epoch':355160,
-         'num_classes':4},
+         'num_classes':5},
 
 
 'IDRID': {'dataset_mean':(0.5, 0.5, 0.5),

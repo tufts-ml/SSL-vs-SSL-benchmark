@@ -28,6 +28,7 @@ from torchvision import transforms
 
 from torch.utils.tensorboard import SummaryWriter
 
+
 from src.dataset_csv import ImageCSVDataset
 from src.LabelOnlyBaseline.libml.utils import save_pickle
 from src.LabelOnlyBaseline.libml.utils import train_one_epoch, eval_model
@@ -212,6 +213,8 @@ def main(args):
     image_size = config[args.dataset_name]['image_size']
 
     transform_labeledtrain = transforms.Compose([
+        # transforms.ToPILImage(),
+        # transforms.Grayscale(num_output_channels=3),
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(size=image_size,
                               padding=int(image_size*0.125),
@@ -221,6 +224,8 @@ def main(args):
     ])
 
     transform_eval = transforms.Compose([
+        # transforms.ToPILImage(),
+        # transforms.Grayscale(num_output_channels=3),
         transforms.ToTensor(),
         transforms.Normalize(mean=dataset_mean, std=dataset_std)
     ])

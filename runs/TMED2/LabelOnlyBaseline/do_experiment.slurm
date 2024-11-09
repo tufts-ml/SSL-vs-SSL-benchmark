@@ -18,6 +18,7 @@ python -m $script \
     --l_train_dataset_path $l_train_dataset_path\
     --val_dataset_path $val_dataset_path\
     --test_dataset_path $test_dataset_path\
+    --root_dataset_path $root_dataset_path\
     --labeledtrain_batchsize $labeledtrain_batchsize\
     --lr_warmup_epochs $lr_warmup_epochs\
     --optimizer_type $optimizer_type\
