@@ -20,4 +20,3 @@ config = {
          'nimg_per_epoch':355160,
          'num_classes':5},
 }
-# added 0 class weight, and changed num classes to 5 from 4

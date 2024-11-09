@@ -4,6 +4,7 @@ import pandas as pd
 from skimage import io
 import numpy as np
 from torchvision.datasets import VisionDataset
+from PIL import Image
 
 
 class ImageCSVDataset(VisionDataset):
@@ -25,6 +26,10 @@ class ImageCSVDataset(VisionDataset):
 
         img_name = os.path.join(self.root_dir, self.data.iloc[index, 0])
         image = io.imread(img_name)
+        
+        # Convert the image to PIL format if it’s not already
+        if isinstance(image, np.ndarray):
+            image = Image.fromarray(image)
 
         # Assuming single-class label at index 1
         label = self.data.iloc[index, 1]
