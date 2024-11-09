@@ -16,16 +16,14 @@ else
 fi
 
 export num_workers=8
-# export total_hour=100
-export total_hour=1
+export total_hour=100
 export num_classes=5
 export use_pretrained='False'
 export patience=20
 
 export implementation='LabelOnlyBaseline'
 
-# export resume='last_checkpoint.pth.tar'
-export resume='None'
+export resume='last_checkpoint.pth.tar'
 
 #experiment setting
 export dataset_name='TMED2'
@@ -33,12 +31,10 @@ export data_seed=1
 export training_seed=0
 export development_size='DEV56' 
 
-# export train_dir="$ROOT_PATH/experiments/$dataset_name/data_seed$data_seed/training_seed$training_seed/$implementation"
 export train_dir="LABELONLYBASELINE"
 mkdir -p $train_dir
 
-# export script="src.$implementation.$implementation"
-export script='src.LabelOnlyBaseline.LabelOnlyBaseline'
+export script="src.$implementation.$implementation"
 
 
 export arch='resnet18'
