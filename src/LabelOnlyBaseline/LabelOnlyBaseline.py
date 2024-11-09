@@ -20,7 +20,6 @@ import json
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
@@ -30,6 +29,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 from src.dataset_csv import ImageCSVDataset
+from src.clahe import apply_clahe
 from src.LabelOnlyBaseline.libml.utils import save_pickle
 from src.LabelOnlyBaseline.libml.utils import train_one_epoch, eval_model
 from src.LabelOnlyBaseline.libml.utils import EarlyStopping
@@ -213,8 +213,8 @@ def main(args):
     image_size = config[args.dataset_name]['image_size']
 
     transform_labeledtrain = transforms.Compose([
-        # transforms.ToPILImage(),
-        # transforms.Grayscale(num_output_channels=3),
+        transforms.Resize(size=image_size),
+        transforms.Lambda(apply_clahe),
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(size=image_size,
                               padding=int(image_size*0.125),
@@ -224,8 +224,8 @@ def main(args):
     ])
 
     transform_eval = transforms.Compose([
-        # transforms.ToPILImage(),
-        # transforms.Grayscale(num_output_channels=3),
+        transforms.Resize(size=image_size),
+        transforms.Lambda(apply_clahe),
         transforms.ToTensor(),
         transforms.Normalize(mean=dataset_mean, std=dataset_std)
     ])
