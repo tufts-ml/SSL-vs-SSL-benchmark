@@ -17,7 +17,6 @@ fi
 
 export num_workers=8
 export total_hour=100
-export num_classes=5
 export use_pretrained='False'
 export patience=20
 
