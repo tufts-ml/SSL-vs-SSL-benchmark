@@ -63,10 +63,8 @@ export lr_cycle_epochs=$train_epoch
 
 
 if [[ $ACTION_NAME == 'submit' ]]; then
-    ## Submit the experiment with the correct resources for batch scheduler
-    sbatch --time=0-02:00 --mem=30G --gres=gpu:rtx_6000:2 --cpus-per-task=30 -p hugheslab <./do_experiment.slurm
+    sbatch --time=1-01:00:00 --mem=30G --gres=gpu:rtx_6000:2 --cpus-per-task=30 -p hugheslab <./do_experiment.slurm
 
 elif [[ $ACTION_NAME == 'run_here' ]]; then
-    ## Run the experiment interactively with the correct resources
-    srun --time=0-02:00 --mem=30G --gres=gpu:rtx_6000:2 --cpus-per-task=30 -p hugheslab --pty bash ./do_experiment.slurm
+    srun --time=1-01:00:00 --mem=30G --gres=gpu:rtx_6000:2 --cpus-per-task=30 -p hugheslab --pty bash ./do_experiment.slurm
 fi
