@@ -247,9 +247,6 @@ def main(args):
     global_best_val_raw_acc_list_parallel = []
     global_best_test_raw_acc_at_val_list_parallel = []
 
-    # create global writer
-    global_writer = SummaryWriter(args.train_dir)
-
     # start timing
     hypercombo_iteratethrough_list = []  # newly added
     hypercombo_iteratethrough_time_list = []

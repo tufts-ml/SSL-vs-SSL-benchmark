@@ -20,10 +20,10 @@ export resized_shape=384
 export num_workers=20
 export total_hour=25
 export num_classes=5
-export use_pretrained='True'
+export use_pretrained='False'
 export patience=20
 
-export implementation='LabelOnlyBaseline'
+export implementation='MixUp'
 
 export resume='None'
 
@@ -32,7 +32,7 @@ export dataset_name='IDRID'
 export data_seed=2
 export training_seed=0
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/data_seed$data_seed/training_seed$training_seed/$implementation/pretrained$use_pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/data_seed$data_seed/training_seed$training_seed/$implementation"
 
 mkdir -p $train_dir
 

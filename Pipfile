@@ -21,7 +21,6 @@ flake8 = "*"
 pep8-naming = "*"
 pytest = "*"
 seaborn = "*"
-tensorboard = "*"
 scikit-learn = "*"
 pandas = "*"
 tqdm = "*"
@@ -29,6 +28,7 @@ scikit-image = "*"
 ipykernel = "*"
 ipython = "*"
 opencv-python = "*"
+tensorboard = "*"
 
 [torch_cpu]
 torch = {index="pytorch_cpu"}
