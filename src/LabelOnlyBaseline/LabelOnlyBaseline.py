@@ -25,6 +25,7 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 from torchvision import transforms
+from sklearn.metrics import roc_auc_score
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -399,10 +400,16 @@ def main(args):
             # val
             val_loss, val_raw_acc, val_true_labels, val_raw_predictions = eval_model(
                 args, val_loader, model, epoch, evaluation_criterion='balanced_accuracy')
+            
+            # calculate auc for validation
+            val_auc = roc_auc_score(val_true_labels, val_raw_predictions, multi_class='macro')
 
             # test
             test_loss, test_raw_acc, test_true_labels, test_raw_predictions = eval_model(
                 args, test_loader, model, epoch, evaluation_criterion='balanced_accuracy')
+            
+            # calculate auc for test
+            test_auc = roc_auc_score(test_true_labels, test_raw_predictions, multi_class='macro')
 
             if val_raw_acc > best_val_raw_acc:
                 is_best = True
@@ -425,10 +432,12 @@ def main(args):
             args.writer.add_scalar('train/4.labeled_loss', np.mean(train_labeled_loss_list), epoch)
 
             args.writer.add_scalar('val/1.val_raw_acc', val_raw_acc, epoch)
+            args.writer.add_scalar('val/2.val_auc', val_auc, epoch)
             args.writer.add_scalar('val/3.val_loss', val_loss, epoch)
             args.writer.add_scalar('test/1.test_raw_acc', test_raw_acc, epoch)
             args.writer.add_scalar('test/3.test_loss', test_loss, epoch)
-
+            args.writer.add_scalar('test/2.test_auc', test_auc, epoch)
+           
             brief_summary["number_of_data"] = {
                 "labeled": len(l_train_dataset),
                 "validation": len(val_dataset), "test": len(test_dataset)
