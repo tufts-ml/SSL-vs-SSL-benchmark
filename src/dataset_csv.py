@@ -13,7 +13,7 @@ class ImageCSVDataset(VisionDataset):
         self.labels = pd.read_csv(csv_file)
         self.root_dir = root_dir
         self.transform = transform
-        self.label_columns = self.labels.columns[5:]
+        self.label_columns = ['Edema', 'Consolidation', 'Atelectasis', 'Pneumothorax', 'Pleural Effusion']
 
     def __len__(self):
         # Using shape[0] for explicit row count
@@ -25,7 +25,7 @@ class ImageCSVDataset(VisionDataset):
 
         img_path = self.labels.iloc[index, 0]
 
-        img_path = img_path.replace('view1_frontal.jpg', 'viewfrontal.jpg.jpg')
+        #img_path = img_path.replace('view1_frontal.jpg', 'viewfrontal.jpg.jpg')
         img_name = os.path.join(self.root_dir, img_path)
 
         if not os.path.exists(img_name):
@@ -33,11 +33,14 @@ class ImageCSVDataset(VisionDataset):
             return None, None
         
         image = io.imread(img_name)
-
-        labels = self.labels.iloc[index, 5:] 
         
+        labels = self.labels.loc[index, self.label_columns] 
         
         labels = labels.fillna(0)  # Replace NaN values with 0
+
+        # labels = labels.replace(-1, np.nan)
+        
+        # labels['Atelectasis'] = labels['Atelectasis'].fillna(1)
        
         labels = labels.astype(np.int32).values
 
