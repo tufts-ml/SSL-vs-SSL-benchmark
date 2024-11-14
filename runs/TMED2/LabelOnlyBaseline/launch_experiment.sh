@@ -30,14 +30,14 @@ export data_seed=1
 export training_seed=0
 export development_size='DEV56' 
 
-export train_dir="LABELONLYBASELINE"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/data_seed$data_seed/training_seed$training_seed/$implementation/pretrained$use_pretrained"
 mkdir -p $train_dir
 
 export script="src.$implementation.$implementation"
 
 
 export arch='resnet18'
-export train_epoch=5 
+export train_epoch=5
 export start_epoch=0
 
 
