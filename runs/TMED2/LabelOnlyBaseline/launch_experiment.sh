@@ -16,28 +16,32 @@ else
 fi
 
 export num_workers=8
-export total_hour=100
+export total_hour=25
 export use_pretrained='False'
 export patience=20
 
 export implementation='LabelOnlyBaseline'
 
-export resume='last_checkpoint.pth.tar'
+# export resume='last_checkpoint.pth.tar'
+export resume='None'
 
 #experiment setting
 export dataset_name='TMED2'
 export data_seed=1
 export training_seed=0
 export development_size='DEV56' 
+# export arch='resnet18'
+export arch='wideresnet'
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/data_seed$data_seed/training_seed$training_seed/$implementation/pretrained$use_pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/data_seed$data_seed/training_seed$training_seed/$implementation/pretrained$use_pretrained/arch$arch/no_transformation"
+# export train_dir="LABELONLYBASELINE_2"
 mkdir -p $train_dir
 
 export script="src.$implementation.$implementation"
 
 
-export arch='resnet18'
-export train_epoch=5
+
+export train_epoch=200
 export start_epoch=0
 
 
@@ -49,7 +53,7 @@ export root_dataset_path='/cluster/tufts/hugheslab/datasets/tmed/version2'
 
 
 #shared config
-export labeledtrain_batchsize=128 #default
+export labeledtrain_batchsize=64 #default
 
 
 #PL config, candidate hypers to search
@@ -63,7 +67,8 @@ export lr_cycle_epochs=$train_epoch
 
 if [[ $ACTION_NAME == 'submit' ]]; then
     ## Use this line to submit the experiment to the batch scheduler
-    sbatch <./do_experiment.slurm
+    # sbatch <./do_experiment.slurm
+    sbatch --time=1-1:00:00 --mem=20G --gres=gpu:rtx_6000:1 --cpus-per-task=16 -p hugheslab <./do_experiment.slurm
 
 elif [[ $ACTION_NAME == 'run_here' ]]; then
     ## Use this line to just run interactively

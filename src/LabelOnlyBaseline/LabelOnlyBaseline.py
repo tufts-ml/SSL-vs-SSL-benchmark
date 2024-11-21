@@ -215,7 +215,7 @@ def main(args):
 
     transform_labeledtrain = transforms.Compose([
         # transforms.ToPILImage(),
-        transforms.Lambda(apply_clahe),
+        # transforms.Lambda(apply_clahe),
         transforms.Grayscale(num_output_channels=3),
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(size=image_size,
@@ -227,7 +227,7 @@ def main(args):
 
     transform_eval = transforms.Compose([
         # transforms.ToPILImage(),
-        transforms.Lambda(apply_clahe),
+        # transforms.Lambda(apply_clahe),
         transforms.Grayscale(num_output_channels=3),
         transforms.ToTensor(),
         transforms.Normalize(mean=dataset_mean, std=dataset_std)
