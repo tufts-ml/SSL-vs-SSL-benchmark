@@ -3,16 +3,17 @@ import argparse
 
 import src.config as config
 from torch.utils.tensorboard import SummaryWriter
-from src.LabelOnlyBaseline.libml.utils import save_pickle
 from src.LabelOnlyBaseline.libml.utils import train_one_epoch, eval_model
 from src.LabelOnlyBaseline.libml.utils import EarlyStopping
 from src.LabelOnlyBaseline.libml.utils import save_checkpoint
 from src.LabelOnlyBaseline.libml.utils import get_cosine_schedule_with_warmup, get_fixed_lr
 
 import os
-import time
 import json
 import numpy as np
+import torch
+import time
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -122,7 +123,13 @@ def get_optimizer(args):
 
 
 def train(args):
+    precalculated_class_weights = config[args.dataset_name]['class_weights']
+    weights = torch.Tensor(precalculated_class_weights)
+    weights = weights.to(args.device)
+    
     model = get_model(args)
+    model = model.to(args.device)
+    
     optimizer = get_optimizer(args)
     train_loader, unlabel_loader, val_loader, test_loader = get_dataloaders(args)
       
@@ -130,22 +137,25 @@ def train(args):
    
     # Initialize scheduler based on args
     if args.lr_schedule_type == 'CosineLR':
-        scheduler = get_cosine_schedule_with_warmup(optimizer,
-                                                    args.lr_warmup_epochs, args.
-                                                    lr_cycle_epochs)
-    else:
+        scheduler = get_cosine_schedule_with_warmup(optimizer, args.lr_warmup_epochs, args.lr_cycle_epochs)
+    elif args.lr_schedule_type == 'FixedLR':
         scheduler = get_fixed_lr(optimizer, args.lr_warmup_epochs, args.lr_cycle_epochs)
+    else:
+        raise NameError('Invalid lr_schedule_type')
 
     # Initialize tracking variables
     best_val_acc = 0
     best_test_acc = 0
-    start_epoch = 0
+    args.start_epoch = 0
+    current_count = 0
+    total_time = 0
     
     # Early stopping
-    early_stopping = EarlyStopping(patience=args.patience)
-        
+    early_stopping = EarlyStopping(patience=args.patience, initial_count=current_count)       
     
-    for epoch in range(start_epoch, args.train_epoch):
+    start_time = time.time()
+    
+    for epoch in range(args.start_epoch, args.train_epoch):
         # Train
         train_losses = train_one_epoch(args, weights, train_loader, model, optimizer, scheduler, epoch)
         
@@ -180,14 +190,13 @@ def train(args):
         if early_stopping(val_acc):
             print(f'Early stopping triggered after epoch {epoch}')
             break
-            
+        
+                    
         # Time tracking
         epoch_time = time.time() - start_time
         total_time += epoch_time
-        if total_time > args.total_hour * 3600:
-            print(f'Time limit reached after epoch {epoch}')
-            break
         start_time = time.time()
+
         
     # Save final summary
     summary = {
@@ -200,10 +209,8 @@ def train(args):
     with open(os.path.join(args.train_dir, 'training_summary.json'), 'w') as f:
         json.dump(summary, f)
         
-    writer.close()
-    
+    writer.close()   
     return best_val_acc, best_test_acc
-    
 
 
 def main(args):
