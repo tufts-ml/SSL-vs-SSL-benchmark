@@ -1,4 +1,7 @@
 import argparse
+from torchvision import transforms
+from src.dataset_csv import ImageCSVDataset
+from src.clahe import apply_clahe
 
 
 import src.config as config
@@ -14,6 +17,7 @@ def parse_args():
     parser.add_argument('--u_train_dataset_path', default='', type=str)
     parser.add_argument('--val_dataset_path', default='', type=str)
     parser.add_argument('--test_dataset_path', default='', type=str)
+    parser.add_argument('--root_dataset_folder', default='', type=str)
     # data loading settings
     parser.add_argument('--labeledtrain_batchsize', default=50, type=int)
     parser.add_argument('--unlabeledtrain_batchsize', default=50, type=int)
@@ -79,8 +83,89 @@ def get_dataloaders(args):
         tuple: 4 DataLoaders, which may be none
                train_loader, unlabel_loader, valid_loader, test_loader
     """
-    # TODO implement
-    return None
+    dataset_name = args.dataset_name
+    root_dataset_folder = args.root_dataset_folder
+
+    train_csv_path = args.l_train_dataset_path
+    val_csv_path = args.val_dataset_path
+    test_csv_path = args.test_dataset_path
+    unlab_csv_path = args.u_train_dataset_path
+
+    dataset_mean = config[args.dataset_name]['dataset_mean']
+    dataset_std = config[args.dataset_name]['dataset_std']
+    image_size = config[args.dataset_name]['image_size']
+
+    if dataset_name == "TMED2":
+        transform_labeledtrain = transforms.Compose([
+        # transforms.ToPILImage(),
+        transforms.Grayscale(num_output_channels=3),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(size=image_size,
+                              padding=int(image_size*0.125),
+                              padding_mode='reflect'),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+        ])
+
+        transform_eval = transforms.Compose([
+        # transforms.ToPILImage(),
+        transforms.Grayscale(num_output_channels=3),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+        ])
+
+    elif dataset_name == "CheXpert":
+        pass
+    elif dataset_name == "IDRID":
+        transform_labeledtrain = transforms.Compose([
+        transforms.Resize(size=image_size),
+        transforms.Lambda(apply_clahe),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(size=image_size,
+                              padding=int(image_size*0.125),
+                              padding_mode='reflect'),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+        ])
+
+        transform_eval = transforms.Compose([
+            transforms.Resize(size=image_size),
+            transforms.Lambda(apply_clahe),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=dataset_mean, std=dataset_std)
+        ])
+    else:
+        raise NotImplementedError(f"Implement dataloading logic for the \
+            following dataset: {dataset_name}")
+    
+    # handle if they're none
+    if args.l_train_dataset_path != '':
+        train_loader = ImageCSVDataset(csv_file=args.l_train_dataset_path,
+                                        root_dir=args.root_dataset_path,
+                                        transform=transform_labeledtrain)
+    else:
+        train_loader = None
+    
+    if args.val_dataset_path != '':
+        valid_loader = ImageCSVDataset(csv_file=args.val_dataset_path,
+                                        root_dir=args.root_dataset_path,
+                                        transform=transform_eval)
+    else:
+        valid_loader = None
+    
+    if args.u_train_dataset_path != '':
+        raise NotImplementedError("Implement Dataloading logic")
+    else:
+        unlab_dataset = None
+
+    if args.test_dataset_path != '':
+        test_loader = ImageCSVDataset(csv_file=args.test_dataset_path,
+                                        root_dir=args.root_dataset_path,
+                                        transform=transform_eval)
+    else:
+        test_loader = None
+
+    return train_loader, unlabel_loader, valid_loader, test_loader
 
 
 def get_model(args):
