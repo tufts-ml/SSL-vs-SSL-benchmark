@@ -7,7 +7,7 @@ from PIL import Image
 
 class ImageCSVDataset(VisionDataset):
     def __init__(self, csv_file, root_dir, transforms=None, transform=None, target_transform=None):
-        """_summary_
+        """Initializes a dataset from a CSV file containing image paths and labels.
 
         Args:
             csv_file (_type_): _description_
@@ -26,9 +26,22 @@ class ImageCSVDataset(VisionDataset):
         self.labels = dataframe.iloc[:, 1]
 
     def __len__(self):
+        """Returns the number of samples in the dataset.
+
+        Returns:
+            int: The number of samples in the dataset.
+        """
         return len(self.img_paths)
 
     def __getitem__(self, index):
+        """Returns the image and label at the specified index.
+
+        Args:
+            index (int): The index of the sample to return.
+
+        Returns:
+            tuple: A tuple containing the image and label.
+        """
         if torch.is_tensor(index):
             index = index.item()
 
@@ -41,5 +54,5 @@ class ImageCSVDataset(VisionDataset):
         # Return as a tuple (image, label) for compatibility
         if self.transforms is not None:
             return self.transforms(image, label)
-           
+
         return (image, label)

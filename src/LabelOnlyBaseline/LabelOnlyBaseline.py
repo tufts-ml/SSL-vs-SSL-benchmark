@@ -400,14 +400,14 @@ def main(args):
             # val
             val_loss, val_raw_acc, val_true_labels, val_raw_predictions = eval_model(
                 args, val_loader, model, epoch, evaluation_criterion='balanced_accuracy')
-            
+
             # calculate auc for validation
             val_auc = roc_auc_score(val_true_labels, val_raw_predictions, multi_class='macro')
 
             # test
             test_loss, test_raw_acc, test_true_labels, test_raw_predictions = eval_model(
                 args, test_loader, model, epoch, evaluation_criterion='balanced_accuracy')
-            
+
             # calculate auc for test
             test_auc = roc_auc_score(test_true_labels, test_raw_predictions, multi_class='macro')
 
@@ -437,7 +437,7 @@ def main(args):
             args.writer.add_scalar('test/1.test_raw_acc', test_raw_acc, epoch)
             args.writer.add_scalar('test/3.test_loss', test_loss, epoch)
             args.writer.add_scalar('test/2.test_auc', test_auc, epoch)
-           
+
             brief_summary["number_of_data"] = {
                 "labeled": len(l_train_dataset),
                 "validation": len(val_dataset), "test": len(test_dataset)
