@@ -115,11 +115,59 @@ def train(args):
     # TODO init SummaryWriter with unique name, then pass hyperparams
 
 
+
 def main(args):
-    # TODO Ray Tune hyperparameter search
-    # https://pytorch.org/tutorials/beginner/hyperparameter_tuning_tutorial.html
-    # TODO test eval
-    _, _, _, test_loader = get_dataloaders(args)
+    hypercombo_iteratethrough_list = []
+    hypercombo_iteratethrough_time_list = []
+
+    start_time = time.time()
+    total_used_time = 0
+
+    while total_used_time <= args.total_hour * 3600:
+        lr = sample_loguniform(low=-5, high=-2, size=1, coefficient=3, base=10)
+        wd = sample_loguniform(low=-6, high=-3, size=1, coefficient=4, base=10)
+
+        print(f'Running with lr: {lr}, wd: {wd}')
+
+        hypercombo_iteratethrough_list.append({'lr': lr, 'wd': wd})
+        save_pickle(os.path.join(args.train_dir, 'global_stats'), 
+                    'hypercombo_iteratethrough_list.pkl', 
+                    hypercombo_iteratethrough_list)
+
+        this_hypercombo_starttime = time.time()
+
+        args.lr = lr
+        args.wd = wd
+        experiment_name = f"lr-{args.lr}_wd-{args.wd}"
+        args.experiment_dir = os.path.join(args.train_dir, 'hypercombos', experiment_name)
+
+        val_acc, test_acc = train(args)
+
+        elapsed_time = time.time() - start_time
+        total_used_time += elapsed_time
+        start_time = time.time()
+
+        print(f'Best val accuracy: {val_acc}, Best test accuracy: {test_acc}')
+
+        brief_summary = {
+            "dataset_name": args.dataset_name,
+            "best_val_raw_acc": val_acc,
+            "best_test_raw_acc_at_val": test_acc
+        }
+
+        with open(os.path.join(args.experiment_dir, "brief_summary.json"), "w") as f:
+            json.dump(brief_summary, f)
+
+        if total_used_time > args.total_hour * 3600:
+            break
+
+        hypercombo_iteratethrough_time_list.append(time.time() - this_hypercombo_starttime)
+        save_pickle(os.path.join(args.train_dir, 'global_stats'), 
+                    'hypercombo_iteratethrough_time_list.pkl', 
+                    hypercombo_iteratethrough_time_list)
+
+    save_pickle(os.path.join(args.train_dir, 'global_stats'), 'total_time.pkl', [total_used_time])
+
 
 
 if __name__ == "__main__":
