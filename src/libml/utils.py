@@ -1,3 +1,5 @@
+import time
+from tqdm import tqdm
 import numpy as np
 import os
 import shutil
@@ -5,6 +7,7 @@ import torch
 import random
 import math
 from torch.optim.lr_scheduler import LambdaLR
+from src.libml.eval_utils import AverageMeter
 
 
 def sample_loguniform(low=0, high=1, size=1, coefficient=1, base=10):
@@ -44,6 +47,15 @@ def get_cosine_schedule_with_warmup(optimizer,
                                     lr_cycle_epochs,  # total train epochs
                                     num_cycles=7./16.,
                                     last_epoch=-1):
+    """Get cosine scheduler with warmup
+
+    Args:
+        optimizer (torch.optim.Optimizer): optimizer
+        lr_warmup_epochs (int): number of warmup epochs
+        lr_cycle_epochs (int): number of total epochs
+        num_cycles (float): number of cosine cycles
+        last_epoch (int): last epoch number
+    """
     def _lr_lambda(current_epoch):
         if current_epoch < lr_warmup_epochs:
             return float(current_epoch) / float(max(1, lr_warmup_epochs))
@@ -55,6 +67,92 @@ def get_cosine_schedule_with_warmup(optimizer,
 
 
 def get_fixed_lr(optimizer, lr_warmup_epochs, lr_cycle_epochs, num_cycles=7./16., last_epoch=-1):
+    """Get fixed learning rate scheduler
+
+    Args:
+        optimizer (torch.optim.Optimizer): optimizer
+        lr_warmup_epochs (int): number of warmup epochs
+        lr_cycle_epochs (int): number of total epochs
+        num_cycles (float): number of cosine cycles
+        last_epoch (int): last epoch number
+    """
     def _lr_lambda(current_epoch):
         return 1.0
     return LambdaLR(optimizer, _lr_lambda, last_epoch)
+
+
+def train_one_epoch(args, weights, labeledtrain_loader, model, optimizer, scheduler, epoch):
+    """
+    Generic training loop compatible with MethodWrapper subclasses.
+    This function trains the model for one epoch using labeled data.
+
+    Args:
+        args (Namespace): Parsed arguments with training settings.
+        weights (torch.Tensor): Class weights for the labeled loss.
+        labeledtrain_loader (DataLoader): DataLoader for labeled training data.
+        model (MethodWrapper): Model wrapped with MethodWrapper.
+        optimizer (Optimizer): Optimizer for the model.
+        scheduler (Scheduler): Learning rate scheduler.
+        epoch (int): Current epoch number.
+
+    Returns:
+        list: A list of labeled loss values for this epoch.
+    """
+    model.train()
+    args.writer.add_scalar('train/lr', scheduler.get_last_lr()[0], epoch)
+
+    # Tracking losses and timing
+    labeled_loss_this_epoch = []
+    end_time = time.time()
+    labeledtrain_iter = iter(labeledtrain_loader)
+
+    batch_time = AverageMeter()
+    data_time = AverageMeter()
+    labeled_loss = AverageMeter()
+
+    # Number of steps per epoch
+    n_steps_per_epoch = args.nimg_per_epoch // args.labeledtrain_batchsize
+    p_bar = tqdm(range(n_steps_per_epoch), disable=False)
+
+    for batch_idx in range(n_steps_per_epoch):
+        try:
+            l_input, l_labels = next(labeledtrain_iter)
+        except StopIteration:
+            labeledtrain_iter = iter(labeledtrain_loader)
+            l_input, l_labels = next(labeledtrain_iter)
+
+        data_time.update(time.time() - end_time)
+
+        # Move data to the device
+        l_input, l_labels = l_input.to(args.device).float(), l_labels.to(args.device).long()
+
+        # Forward pass through the model
+        # Assuming no unlabeled data for this example
+        loss, s_loss, _ = model(l_input, l_labels, None)
+
+        # Calculate supervised loss and backpropagate
+        if s_loss != 0:
+            labeled_loss.update(s_loss.item())
+            labeled_loss_this_epoch.append(s_loss.item())
+            s_loss.backward()
+
+        optimizer.step()
+        model.zero_grad()
+
+        batch_time.update(time.time() - end_time)
+        end_time = time.time()
+
+        # Update progress bar
+        p_bar.set_description(
+            f"Train Epoch: {epoch}/{args.train_epoch}. "
+            f"Iter: {batch_idx + 1}/{n_steps_per_epoch}. "
+            f"LR: {scheduler.get_last_lr()[0]:.4f}. "
+            f"Data: {data_time.avg:.3f}s. Batch: {batch_time.avg:.3f}s. "
+            f"Loss_x: {labeled_loss.avg:.4f}."
+        )
+        p_bar.update()
+
+    p_bar.close()
+    scheduler.step()
+
+    return labeled_loss_this_epoch
