@@ -1,18 +1,16 @@
+import time
+import torch
+import numpy as np
+import json
+import os
+from src.utils import save_checkpoint, get_cosine_schedule_with_warmup, get_fixed_lr
 import argparse
 
 
 import src.config as config
 from torch.utils.tensorboard import SummaryWriter
-from src.LabelOnlyBaseline.libml.utils import train_one_epoch, eval_model
-from src.LabelOnlyBaseline.libml.utils import EarlyStopping
-from src.LabelOnlyBaseline.libml.utils import save_checkpoint
-from src.LabelOnlyBaseline.libml.utils import get_cosine_schedule_with_warmup, get_fixed_lr
-
-import os
-import json
-import numpy as np
-import torch
-import time
+from src.libml.eval_utils import eval_model, EarlyStopping
+from src.LabelOnlyBaseline.libml.utils import train_one_epoch
 
 
 def parse_args():
@@ -163,20 +161,16 @@ def train(args):
 
         # Evaluate
         val_loss, val_acc, val_labels, val_preds = eval_model(args, val_loader, model, epoch)
-        test_loss, test_acc, test_labels, test_preds = eval_model(args, test_loader, model, epoch)
 
         # Update best scores
         is_best = val_acc > best_val_acc
         if is_best:
             best_val_acc = val_acc
-            best_test_acc = test_acc
 
         # Log metrics
         writer.add_scalar('train/loss', np.mean(train_losses), epoch)
         writer.add_scalar('val/accuracy', val_acc, epoch)
         writer.add_scalar('val/loss', val_loss, epoch)
-        writer.add_scalar('test/accuracy', test_acc, epoch)
-        writer.add_scalar('test/loss', test_loss, epoch)
 
         # Save checkpoint
         save_checkpoint({
@@ -197,6 +191,10 @@ def train(args):
         epoch_time = time.time() - start_time
         total_time += epoch_time
         start_time = time.time()
+
+    test_loss, test_acc, test_labels, test_preds = eval_model(args, test_loader, model, epoch)
+    writer.add_scalar('test/accuracy', test_acc, epoch)
+    writer.add_scalar('test/loss', test_loss, epoch)
 
     # Save final summary
     summary = {
