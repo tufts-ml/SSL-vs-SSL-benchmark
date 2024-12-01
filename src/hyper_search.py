@@ -10,7 +10,8 @@ import argparse
 import src.config as config
 from torch.utils.tensorboard import SummaryWriter
 from src.libml.eval_utils import eval_model, EarlyStopping
-from src.LabelOnlyBaseline.libml.utils import train_one_epoch
+from src.libml.utils import train_one_epoch
+from src.LabelOnlyBaseline.libml.model import SupervisedMethod
 
 
 def parse_args():
@@ -104,7 +105,7 @@ def get_model(args):
         torch.nn.Module: model specified by args
     """
     # TODO implement
-    return None
+    return SupervisedMethod(args.arch, args)
 
 
 def get_optimizer(args):
@@ -131,6 +132,7 @@ def train(args):
     optimizer = get_optimizer(args)
     train_loader, unlabel_loader, val_loader, test_loader = get_dataloaders(args)
 
+    os.makedirs(args.train_dir, exist_ok=True)
     writer = SummaryWriter(args.train_dir)
 
     # Initialize scheduler based on args
@@ -177,7 +179,6 @@ def train(args):
             'epoch': epoch + 1,
             'state_dict': model.state_dict(),
             'best_val_acc': best_val_acc,
-            'best_test_acc': best_test_acc,
             'optimizer': optimizer.state_dict(),
             'scheduler': scheduler.state_dict(),
         }, is_best, args.train_dir)
@@ -212,6 +213,8 @@ def train(args):
 
 
 def main(args):
+    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
     # TODO Ray Tune hyperparameter search
     # https://pytorch.org/tutorials/beginner/hyperparameter_tuning_tutorial.html
     # TODO test eval
