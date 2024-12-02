@@ -1,10 +1,8 @@
 import argparse
 from torchvision import transforms
-from src.dataset_csv import ImageCSVDataset
-from src.clahe import apply_clahe
-
-
-import src.config as config
+from src.dataset_csv import ImageCSVDataset, UnlabeledDataset, CheXpertDataset
+from src.apply_clahe import apply_clahe
+from src.config import config
 
 
 def parse_args():
@@ -17,10 +15,10 @@ def parse_args():
     parser.add_argument('--u_train_dataset_path', default='', type=str)
     parser.add_argument('--val_dataset_path', default='', type=str)
     parser.add_argument('--test_dataset_path', default='', type=str)
-    parser.add_argument('--root_dataset_folder', default='', type=str)
+    parser.add_argument('--root_dataset_path', default='', type=str)
     # data loading settings
-    parser.add_argument('--labeledtrain_batchsize', default=50, type=int)
-    parser.add_argument('--unlabeledtrain_batchsize', default=50, type=int)
+    parser.add_argument('--labeledtrain_batchsize', default=128, type=int)
+    parser.add_argument('--unlabeledtrain_batchsize', default=128, type=int)
     parser.add_argument('--num_workers', default=12, type=int)
 
     # architecture settings
@@ -84,7 +82,7 @@ def get_dataloaders(args):
                train_loader, unlabel_loader, valid_loader, test_loader
     """
     dataset_name = args.dataset_name
-    root_dataset_folder = args.root_dataset_folder
+    root_dataset_folder = args.root_dataset_path
 
     train_csv_path = args.l_train_dataset_path
     val_csv_path = args.val_dataset_path
@@ -97,35 +95,46 @@ def get_dataloaders(args):
 
     if dataset_name == "TMED2":
         transform_labeledtrain = transforms.Compose([
-        # transforms.ToPILImage(),
-        transforms.Grayscale(num_output_channels=3),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(size=image_size,
-                              padding=int(image_size*0.125),
-                              padding_mode='reflect'),
-        transforms.ToTensor(),
+            transforms.Grayscale(num_output_channels=3),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomCrop(size=image_size,
+                                padding=int(image_size*0.125),
+                                padding_mode='reflect'),
+            transforms.ToTensor(),
         transforms.Normalize(mean=dataset_mean, std=dataset_std)
         ])
 
         transform_eval = transforms.Compose([
-        # transforms.ToPILImage(),
-        transforms.Grayscale(num_output_channels=3),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+            transforms.Grayscale(num_output_channels=3),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=dataset_mean, std=dataset_std)
+        ])
+    elif dataset_name == "CheXpert":
+        transform_labeledtrain = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomCrop(size=image_size,
+                                padding=int(image_size*0.125),
+                                padding_mode='reflect'),
+            transforms.ToTensor(),
+            # transforms.Normalize(mean=dataset_mean, std=dataset_std)
         ])
 
-    elif dataset_name == "CheXpert":
-        pass
+        transform_eval = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.ToTensor(),
+            # transforms.Normalize(mean=dataset_mean, std=dataset_std)
+        ])
     elif dataset_name == "IDRID":
         transform_labeledtrain = transforms.Compose([
-        transforms.Resize(size=image_size),
-        transforms.Lambda(apply_clahe),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(size=image_size,
-                              padding=int(image_size*0.125),
-                              padding_mode='reflect'),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+            transforms.Resize(size=image_size),
+            transforms.Lambda(apply_clahe),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomCrop(size=image_size,
+                                padding=int(image_size*0.125),
+                                padding_mode='reflect'),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=dataset_mean, std=dataset_std)
         ])
 
         transform_eval = transforms.Compose([
@@ -140,26 +149,43 @@ def get_dataloaders(args):
     
     # handle if they're none
     if args.l_train_dataset_path != '':
-        train_loader = ImageCSVDataset(csv_file=args.l_train_dataset_path,
-                                        root_dir=args.root_dataset_path,
-                                        transform=transform_labeledtrain)
+        if dataset_name != "CheXpert":
+            train_loader = ImageCSVDataset(csv_file=args.l_train_dataset_path,
+                                            root_dir=args.root_dataset_path,
+                                            transform=transform_labeledtrain)
+        else:
+            train_loader = CheXpertDataset(csv_file=args.l_train_dataset_path,
+                                            root_dir=args.root_dataset_path,
+                                            transform=transform_labeledtrain)
     else:
         train_loader = None
     
     if args.val_dataset_path != '':
-        valid_loader = ImageCSVDataset(csv_file=args.val_dataset_path,
+        if dataset_name != "CheXpert":
+            valid_loader = ImageCSVDataset(csv_file=args.val_dataset_path,
+                                            root_dir=args.root_dataset_path,
+                                            transform=transform_eval)
+        else:
+            valid_loader = CheXpertDataset(csv_file=args.val_dataset_path,
                                         root_dir=args.root_dataset_path,
                                         transform=transform_eval)
     else:
         valid_loader = None
     
     if args.u_train_dataset_path != '':
-        raise NotImplementedError("Implement Dataloading logic")
+        unlabel_loader = UnlabeledDataset(csv_file=args.u_train_dataset_path,
+                                        root_dir=args.root_dataset_path,
+                                        transform=transform_labeledtrain)
     else:
-        unlab_dataset = None
+        unlabel_loader = None
 
     if args.test_dataset_path != '':
-        test_loader = ImageCSVDataset(csv_file=args.test_dataset_path,
+        if dataset_name != "CheXpert":
+            test_loader = ImageCSVDataset(csv_file=args.test_dataset_path,
+                                            root_dir=args.root_dataset_path,
+                                            transform=transform_eval)
+        else:
+            test_loader = CheXpertDataset(csv_file=args.test_dataset_path,
                                         root_dir=args.root_dataset_path,
                                         transform=transform_eval)
     else:
