@@ -19,4 +19,19 @@ config = {
          'class_weights':[0.137, 0.398, 0.192, 0.273],
          'nimg_per_epoch':355160,
          'num_classes':4},
+
+'IDRID': {
+        'dataset_mean': (0.4250, 0.2092, 0.0707),
+        'dataset_std': (0.3227, 0.1689, 0.0850),
+        'image_size': 384,
+        'class_weights': [0.0756, 0.5064, 0.0745, 0.1369, 0.2067],
+        'nimg_per_epoch': 206,
+        'num_classes': 5},
+
+'CheXpert': {'dataset_mean':(0.5064, 0.5064, 0.5064),
+         'dataset_std':(0.2894, 0.2894, 0.2894),
+         'image_size':(320,390),
+         'class_weights':[0.3027, 0.6973],
+         'nimg_per_epoch': 3500,
+         'num_classes':2},
 }
