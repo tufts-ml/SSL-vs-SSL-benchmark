@@ -39,7 +39,7 @@ export script='src.LabelOnlyBaseline.LabelOnlyBaseline'
 
 
 export arch='resnet18'
-export train_epoch=50
+export train_epoch=2
 export start_epoch=0
 
 

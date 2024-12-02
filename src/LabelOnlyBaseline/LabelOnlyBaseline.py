@@ -212,15 +212,25 @@ def main(args):
     image_size = config[args.dataset_name]['image_size']
 
     transform_labeledtrain = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Grayscale(num_output_channels=3),
+        
         transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(size=image_size,
-                              padding=int(image_size*0.125),
-                              padding_mode='reflect'),
+        # transforms.RandomCrop(size=image_size,
+        #                       padding = int(image_size[0] * 0.125),
+        #                       padding_mode='reflect'),
+        transforms.Resize(400), 
+        transforms.CenterCrop(320),
         transforms.ToTensor(),
         transforms.Normalize(mean=dataset_mean, std=dataset_std)
     ])
 
     transform_eval = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Grayscale(num_output_channels=3),
+        transforms.RandomHorizontalFlip(),
+        transforms.Resize(400), 
+        transforms.CenterCrop(320),
         transforms.ToTensor(),
         transforms.Normalize(mean=dataset_mean, std=dataset_std)
     ])

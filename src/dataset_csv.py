@@ -13,10 +13,9 @@ class ImageCSVDataset(VisionDataset):
         self.labels = pd.read_csv(csv_file)
         self.root_dir = root_dir
         self.transform = transform
-        self.label_columns = ['Edema', 'Consolidation', 'Atelectasis', 'Pneumothorax', 'Pleural Effusion']
+        self.label_columns = ['Atelectasis']
 
     def __len__(self):
-        # Using shape[0] for explicit row count
         return self.labels.shape[0]
 
     def __getitem__(self, index):
@@ -28,24 +27,35 @@ class ImageCSVDataset(VisionDataset):
         #img_path = img_path.replace('view1_frontal.jpg', 'viewfrontal.jpg.jpg')
         img_name = os.path.join(self.root_dir, img_path)
 
+     
+
         if not os.path.exists(img_name):
             print(f"File not found: {img_name}")
-            return None, None
+            return None
         
         image = io.imread(img_name)
         
+        if image is None:
+            print(f"Error loading image: {img_name}")
+            return None
+            
         labels = self.labels.loc[index, self.label_columns] 
         
-        labels = labels.fillna(0)  # Replace NaN values with 0
+        pd.set_option('future.no_silent_downcasting', True)
+        labels = labels.fillna(0).infer_objects()   # Replace NaN values with 0
 
-        # labels = labels.replace(-1, np.nan)
-        
-        # labels['Atelectasis'] = labels['Atelectasis'].fillna(1)
-       
+        labels[labels == -1] = 1
         labels = labels.astype(np.int32).values
+
+        if len(self.label_columns) == 1:
+            labels = labels[0] 
+        labels = torch.tensor(labels, dtype=torch.long)
+
+
 
         if self.transform is not None:
             return self.transform(image), labels
+
            
         return image, labels
 
