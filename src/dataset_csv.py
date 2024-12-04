@@ -46,7 +46,7 @@ class CheXpertDataset(VisionDataset):
         self.labels = pd.read_csv(csv_file)
         self.root_dir = root_dir
         self.transform = transform
-        self.label_columns = ['Atelectasis']
+        self.label_columns = ['Edema', 'Consolidation', 'Atelectasis', 'Pneumothorax', 'Pleural Effusion']
 
 
     def __len__(self):
@@ -56,17 +56,19 @@ class CheXpertDataset(VisionDataset):
     def __getitem__(self, index):
         if torch.is_tensor(index):
             index = index.item()
+
         img_path = self.labels.iloc[index, 0]
-        #img_path = img_path.replace('view1_frontal.jpg', 'viewfrontal.jpg.jpg')
         img_name = os.path.join(self.root_dir, img_path)
+
         if not os.path.exists(img_name):
             print(f"File not found: {img_name}")
             return None, None
+
         image = io.imread(img_name)
         labels = self.labels.loc[index, self.label_columns]
         labels = labels.fillna(0)  # Replace NaN values with 0
-        labels[labels == -1] = 1
         labels = labels.astype(np.int32).values
+
         if self.transform is not None:
             return self.transform(image), labels
         return image, labels
