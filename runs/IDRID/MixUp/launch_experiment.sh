@@ -17,7 +17,7 @@ else
 fi
 
 export resized_shape=384
-export num_workers=20
+export num_workers=10
 export total_hour=25
 export num_classes=5
 export use_pretrained='False'
@@ -29,8 +29,8 @@ export resume='None'
 
 #experiment setting
 export dataset_name='IDRID'
-export data_seed=2
-export training_seed=0
+export data_seed=5
+export training_seed=2
 
 export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/data_seed$data_seed/training_seed$training_seed/$implementation"
 

@@ -104,10 +104,12 @@ def train_one_epoch(args, weights, labeledtrain_loader, model, optimizer, schedu
     for batch_idx in range(n_steps_per_epoch):
 
         try:
-            (l_input, l_input2), l_labels = labeledtrain_iter.next()
-        except:
+            # Use the built-in `next` function
+            (l_input, l_input2), l_labels = next(labeledtrain_iter)
+        except StopIteration:
+            # Reset the iterator if it reaches the end
             labeledtrain_iter = iter(labeledtrain_loader)
-            (l_input, l_input2), l_labels = labeledtrain_iter.next()
+            (l_input, l_input2), l_labels = next(labeledtrain_iter)
 
         data_time.update(time.time() - end_time)
 
