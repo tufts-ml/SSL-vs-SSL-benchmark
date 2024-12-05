@@ -6,7 +6,7 @@
 #
 # where ACTION_NAME is either 'list' or 'submit' or 'run_here'
 
-export ROOT_PATH='/cluster/tufts/hugheslab/ljain01/SSL-vs-SSL-benchmark'
+export ROOT_PATH='/cluster/tufts/hugheslab/ljain01/lab/SSL-vs-SSL-benchmark'
 export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
 
 
@@ -36,7 +36,7 @@ export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/da
 
 mkdir -p $train_dir
 
-export script='src.LabelOnlyBaseline.LabelOnlyBaseline'
+export script='src.MixUp.MixUp'
 
 
 export arch='resnet18'
@@ -66,5 +66,5 @@ if [[ $ACTION_NAME == 'submit' ]]; then
     sbatch --time=1-01:00:00 --mem=30G --gres=gpu:rtx_6000:2 --cpus-per-task=30 -p hugheslab <./do_experiment.slurm
 
 elif [[ $ACTION_NAME == 'run_here' ]]; then
-    srun --time=1-01:00:00 --mem=30G --gres=gpu:rtx_6000:2 --cpus-per-task=30 -p hugheslab --pty bash ./do_experiment.slurm
+    bash ./do_experiment.slurm
 fi

@@ -2,6 +2,8 @@
 experiments/
 ML_DATA/
 LABELONLYBASELINE/
+Self/BarlowTwins/runs/
+Self/SimCLR/runs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
