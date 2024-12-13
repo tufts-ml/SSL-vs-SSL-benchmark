@@ -39,7 +39,35 @@ class ImageCSVDataset(VisionDataset):
         return (image, label)
 
 
+class UnlabeledImageCSVDataset(ImageCSVDataset):
+    def __init__(self, csv_file, root_dir, transforms=None, transform=None, target_transform=None):
+        super().__init__(csv_file, root_dir, transforms, transform, target_transform)
+
+    # TODO can the below two functions be inherited or use super function calls?
+    # should be possible if the CSV is still expected to have 2 columns
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, index):
+        if torch.is_tensor(index):
+            index = index.item()
+
+        img_name = os.path.join(self.root_dir, self.data.iloc[index, 0])
+        image = io.imread(img_name)
+
+        # Convert the image to PIL format if it’s not already
+        if isinstance(image, np.ndarray):
+            image = Image.fromarray(image)
+
+        # Return data
+        if self.transforms is not None:
+            return self.transforms(image)
+
+        return image
+
+
 class CheXpertDataset(VisionDataset):
+    # TODO how could inheritance reduce the amount of code in these first 2 functions?
     def __init__(self, csv_file, root_dir, transforms=None, transform=None, target_transform=None):
         super().__init__(root=root_dir, transforms=transforms, transform=transform,
                          target_transform=target_transform)
@@ -72,35 +100,3 @@ class CheXpertDataset(VisionDataset):
         if self.transform is not None:
             return self.transform(image), labels
         return image, labels
-
-
-class UnlabeledDataset(VisionDataset):
-    def __init__(self, csv_file, root_dir, transforms=None, transform=None, target_transform=None):
-        super().__init__(root=root_dir, transforms=transforms, transform=transform,
-                         target_transform=target_transform)
-        self.data = pd.read_csv(csv_file)
-        self.root_dir = root_dir
-        self.transform = transform
-
-
-    def __len__(self):
-        return len(self.data)
-
-
-    def __getitem__(self, index):
-        if torch.is_tensor(index):
-            index = index.item()
-
-        img_name = os.path.join(self.root_dir, self.data.iloc[index, 0])
-        image = io.imread(img_name)
-        
-        # Convert the image to PIL format if it’s not already
-        if isinstance(image, np.ndarray):
-            image = Image.fromarray(image)
-
-        # Return data
-        if self.transforms is not None:
-            return self.transforms(image)
-           
-        return image
-        
