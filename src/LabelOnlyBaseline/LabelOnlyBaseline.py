@@ -16,6 +16,7 @@ import random
 import shutil
 import time
 import json
+import cProfile
 
 
 import numpy as np
@@ -30,7 +31,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 from src.dataset_csv import ImageCSVDataset 
-from src.tmed2_clahe import apply_clahe
+from src.apply_clahe import apply_clahe
 from src.LabelOnlyBaseline.libml.utils import save_pickle
 from src.LabelOnlyBaseline.libml.utils import train_one_epoch, eval_model
 from src.LabelOnlyBaseline.libml.utils import EarlyStopping
@@ -531,4 +532,5 @@ if __name__ == '__main__':
         print('setting training seed{}'.format(args.training_seed), flush=True)
         set_seed(args.training_seed)
 
-    main(args)
+    cProfile.run('main(args)', sort='cumtime')
+    # main(args)

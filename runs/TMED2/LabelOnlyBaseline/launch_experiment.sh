@@ -16,7 +16,7 @@ else
 fi
 
 export num_workers=8
-export total_hour=25
+export total_hour=1
 export use_pretrained='False'
 export patience=20
 
@@ -41,7 +41,7 @@ export script="src.$implementation.$implementation"
 
 
 
-export train_epoch=200
+export train_epoch=1
 export start_epoch=0
 
 
@@ -53,7 +53,7 @@ export root_dataset_path='/cluster/tufts/hugheslab/datasets/tmed/version2'
 
 
 #shared config
-export labeledtrain_batchsize=64 #default
+export labeledtrain_batchsize=128 #default
 
 
 #PL config, candidate hypers to search
