@@ -3,15 +3,21 @@ import torch
 import numpy as np
 import json
 import os
-from src.utils import save_checkpoint, get_cosine_schedule_with_warmup, get_fixed_lr
+from src.libml.utils import save_checkpoint, get_cosine_schedule_with_warmup, get_fixed_lr
 import argparse
 
 
 import src.config as config
 from torch.utils.tensorboard import SummaryWriter
-from src.libml.eval_utils import eval_model, EarlyStopping
+from src.libml.eval_utils import (
+    calculate_auprc,
+    calculate_auroc,
+    calculate_balanced_accuracy,
+    eval_model,
+    EarlyStopping
+)
 from src.libml.utils import train_one_epoch
-from src.LabelOnlyBaseline.libml.model import SupervisedMethod
+from src.LabelOnlyBaseline.libml.utils.model import SupervisedMethod
 
 
 def parse_args():
@@ -146,7 +152,6 @@ def train(args):
 
     # Initialize tracking variables
     best_val_acc = 0
-    best_test_acc = 0
     args.start_epoch = 0
     current_count = 0
     total_time = 0
@@ -169,10 +174,18 @@ def train(args):
         if is_best:
             best_val_acc = val_acc
 
+        # Calculate metrics
+        balanced_acc = calculate_balanced_accuracy(val_labels, val_preds)
+        auroc = calculate_auroc(val_labels, val_preds)
+        auprc = calculate_auprc(val_labels, val_preds)
+
         # Log metrics
         writer.add_scalar('train/loss', np.mean(train_losses), epoch)
         writer.add_scalar('val/accuracy', val_acc, epoch)
         writer.add_scalar('val/loss', val_loss, epoch)
+        writer.add_scalar('val/balanced_accuracy', balanced_acc, epoch)
+        writer.add_scalar('val/auroc', auroc, epoch)
+        writer.add_scalar('val/auprc', auprc, epoch)
 
         # Save checkpoint
         save_checkpoint({
@@ -200,7 +213,7 @@ def train(args):
     # Save final summary
     summary = {
         'best_val_accuracy': best_val_acc,
-        'best_test_accuracy': best_test_acc,
+        'test_accuracy': test_acc,
         'total_epochs': epoch + 1,
         'total_time': total_time
     }
@@ -209,7 +222,7 @@ def train(args):
         json.dump(summary, f)
 
     writer.close()
-    return best_val_acc, best_test_acc
+    return best_val_acc, test_acc
 
 
 def main(args):

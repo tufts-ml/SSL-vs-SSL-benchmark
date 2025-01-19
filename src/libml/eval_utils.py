@@ -8,13 +8,16 @@ import os
 import pickle
 
 import torch
+from sklearn.metrics import auc
 from sklearn.metrics import confusion_matrix as sklearn_cm
+from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import roc_auc_score
 
 
 logger = logging.getLogger(__name__)
 
 __all__ = ['get_mean_and_std', 'AverageMeter', 'eval_model',
-           'save_pickle', 'calculate_plain_accuracy', 'calculate_balanced_accuracy', 
+           'save_pickle', 'calculate_plain_accuracy', 'calculate_balanced_accuracy',
            'EarlyStopping']
 
 
@@ -54,7 +57,24 @@ class EarlyStopping:
             self.counter = 0
 
 
-def eval_model(args, data_loader, raw_model, epoch, evaluation_criterion, weights=None):
+def eval_model(args, data_loader, raw_model, epoch,
+               evaluation_criterion='plain_accuracy', weights=None):
+    """Evaluate model on validation or test set
+
+    Args:
+        args (Namespace): parsed arguments
+        data_loader (torch.utils.data.DataLoader): data loader for validation or test set
+        raw_model (torch.nn.Module): model to evaluate
+        epoch (int): current epoch
+        evaluation_criterion (str, optional): evaluation criterion. Defaults to 'plain_accuracy'.
+        weights (torch.Tensor, optional): class weights for
+
+    Raises:
+        NameError: _description_
+
+    Returns:
+        tuple: loss, raw_performance, total_targets, total_raw_outputs
+    """
 
     if evaluation_criterion == 'plain_accuracy':
         evaluation_method = calculate_plain_accuracy
@@ -130,6 +150,36 @@ def calculate_balanced_accuracy(output, target):
     balanced_accuracy = np.mean(np.array(recalls))
 
     return balanced_accuracy * 100
+
+
+def calculate_auroc(output, target):
+    if output.shape[1] == 1:  # Binary classification with single output (logit)
+        probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
+        auroc_score = roc_auc_score(target, probabilities[:, 1])
+    else:  # Multi-class classification
+        probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
+        auroc_score = roc_auc_score(target, probabilities, multi_class="ovr")
+
+    return auroc_score * 100
+
+
+def calculate_auprc(output, target):
+    if output.shape[1] == 1:  # Binary classification with single output (logit)
+        probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
+        precision, recall, _ = precision_recall_curve(target, probabilities[:, 1])
+        auprc_score = auc(recall, precision)
+
+    else:  # Multi-class classification
+        probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
+        auprc_score = 0
+        for class_idx in range(probabilities.shape[1]):
+            # Compute precision-recall curve for each class in a one-vs-rest manner
+            class_target = (target == class_idx).astype(int)
+            precision, recall, _ = precision_recall_curve(class_target, probabilities[:, class_idx])
+            auprc_score += auc(recall, precision)
+        auprc_score /= probabilities.shape[1]  # Average across classes
+
+    return auprc_score * 100
 
 
 def save_pickle(save_dir, save_file_name, data):
