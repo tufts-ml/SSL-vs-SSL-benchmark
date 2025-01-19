@@ -1,4 +1,7 @@
 import argparse
+import json
+import os
+import time
 
 
 import src.config as config
@@ -115,7 +118,6 @@ def train(args):
     # TODO init SummaryWriter with unique name, then pass hyperparams
 
 
-
 def main(args):
     hypercombo_iteratethrough_list = []
     hypercombo_iteratethrough_time_list = []
@@ -130,8 +132,8 @@ def main(args):
         print(f'Running with lr: {lr}, wd: {wd}')
 
         hypercombo_iteratethrough_list.append({'lr': lr, 'wd': wd})
-        save_pickle(os.path.join(args.train_dir, 'global_stats'), 
-                    'hypercombo_iteratethrough_list.pkl', 
+        save_pickle(os.path.join(args.train_dir, 'global_stats'),
+                    'hypercombo_iteratethrough_list.pkl',
                     hypercombo_iteratethrough_list)
 
         this_hypercombo_starttime = time.time()
@@ -162,12 +164,11 @@ def main(args):
             break
 
         hypercombo_iteratethrough_time_list.append(time.time() - this_hypercombo_starttime)
-        save_pickle(os.path.join(args.train_dir, 'global_stats'), 
-                    'hypercombo_iteratethrough_time_list.pkl', 
+        save_pickle(os.path.join(args.train_dir, 'global_stats'),
+                    'hypercombo_iteratethrough_time_list.pkl',
                     hypercombo_iteratethrough_time_list)
 
     save_pickle(os.path.join(args.train_dir, 'global_stats'), 'total_time.pkl', [total_used_time])
-
 
 
 if __name__ == "__main__":
