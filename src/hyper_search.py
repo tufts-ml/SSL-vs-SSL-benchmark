@@ -13,6 +13,9 @@ import src.config as config
 def parse_args():
     parser = argparse.ArgumentParser()
 
+    # method settings
+    parser.add_argument('--method', default='LabelOnlyBaseline', type=str,
+                        choices=['LabelOnlyBaseline',])
     # data settings
     parser.add_argument('--dataset_name', default='TissueMNIST', type=str, help='name of dataset')
     # dataset paths
@@ -142,10 +145,7 @@ def test_accuracy(model, device, args):
 def main(args):
     # TODO Ray Tune hyperparameter search
     # https://pytorch.org/tutorials/beginner/hyperparameter_tuning_tutorial.html
-    config = {
-        "lr": tune.loguniform(1e-5, 1e-2),
-        "wd": tune.loguniform(1e-6, 1e-3),
-    }
+    method_config = config.method_config[args.method]
     scheduler = ASHAScheduler(
         metric="val_acc",
         mode="max",
@@ -156,7 +156,7 @@ def main(args):
 
     result = tune.run(
         partial(train, args=args),
-        config=config,
+        config=method_config,
         num_samples=20,  # TODO adjust
         scheduler=scheduler,
         resources_per_trial={"cpu": 2, "gpu": 1},  # TODO adjust
