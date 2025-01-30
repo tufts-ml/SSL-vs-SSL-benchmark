@@ -1,4 +1,10 @@
 import argparse
+from functools import partial
+from pathlib import Path
+import torch
+from ray import tune
+from ray.tune.schedulers import ASHAScheduler
+import ray.cloudpickle as pickle
 
 
 import src.config as config
@@ -115,59 +121,70 @@ def train(args):
     # TODO init SummaryWriter with unique name, then pass hyperparams
 
 
+def test_accuracy(model, device, args):
+    model.eval()
+    correct = 0
+    total = 0
+
+    _, _, _, test_loader = get_dataloaders(args)
+
+    with torch.no_grad():
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+    return correct / total
+
 
 def main(args):
-    hypercombo_iteratethrough_list = []
-    hypercombo_iteratethrough_time_list = []
+    # TODO Ray Tune hyperparameter search
+    # https://pytorch.org/tutorials/beginner/hyperparameter_tuning_tutorial.html
+    config = {
+        "lr": tune.loguniform(1e-5, 1e-2),
+        "wd": tune.loguniform(1e-6, 1e-3),
+    }
+    scheduler = ASHAScheduler(
+        metric="val_acc",
+        mode="max",
+        max_t=args.train_epoch,
+        grace_period=1,
+        reduction_factor=2,
+    )
 
-    start_time = time.time()
-    total_used_time = 0
+    result = tune.run(
+        partial(train, args=args),
+        config=config,
+        num_samples=20,  # TODO adjust
+        scheduler=scheduler,
+        resources_per_trial={"cpu": 2, "gpu": 1},  # TODO adjust
+        local_dir=args.train_dir,
+    )
 
-    while total_used_time <= args.total_hour * 3600:
-        lr = sample_loguniform(low=-5, high=-2, size=1, coefficient=3, base=10)
-        wd = sample_loguniform(low=-6, high=-3, size=1, coefficient=4, base=10)
+    best_trial = result.get_best_trial("val_acc", "max", "last")
+    print(f"Best trial config: {best_trial.config}")
+    print(f"Best trial final validation accuracy: {best_trial.last_result['val_acc']}")
+    print(f"Best trial final test accuracy: {best_trial.last_result['test_acc']}")
+    # TODO test eval
+    best_trained_model = get_model(args)
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda:0"
+    best_trained_model.to(device)
 
-        print(f'Running with lr: {lr}, wd: {wd}')
+    best_checkpoint = result.get_best_checkpoint(trial=best_trial, metric="accuracy", mode="max")
+    with best_checkpoint.as_directory() as checkpoint_dir:
+        data_path = Path(checkpoint_dir) / "data.pkl"
+        with open(data_path, "rb") as fp:
+            best_checkpoint_data = pickle.load(fp)
 
-        hypercombo_iteratethrough_list.append({'lr': lr, 'wd': wd})
-        save_pickle(os.path.join(args.train_dir, 'global_stats'), 
-                    'hypercombo_iteratethrough_list.pkl', 
-                    hypercombo_iteratethrough_list)
+    best_trained_model.load_state_dict(best_checkpoint_data["net_state_dict"])
+    test_acc = test_accuracy(best_trained_model, device, args)
+    print("Best trial test set accuracy: {}".format(test_acc))
 
-        this_hypercombo_starttime = time.time()
-
-        args.lr = lr
-        args.wd = wd
-        experiment_name = f"lr-{args.lr}_wd-{args.wd}"
-        args.experiment_dir = os.path.join(args.train_dir, 'hypercombos', experiment_name)
-
-        val_acc, test_acc = train(args)
-
-        elapsed_time = time.time() - start_time
-        total_used_time += elapsed_time
-        start_time = time.time()
-
-        print(f'Best val accuracy: {val_acc}, Best test accuracy: {test_acc}')
-
-        brief_summary = {
-            "dataset_name": args.dataset_name,
-            "best_val_raw_acc": val_acc,
-            "best_test_raw_acc_at_val": test_acc
-        }
-
-        with open(os.path.join(args.experiment_dir, "brief_summary.json"), "w") as f:
-            json.dump(brief_summary, f)
-
-        if total_used_time > args.total_hour * 3600:
-            break
-
-        hypercombo_iteratethrough_time_list.append(time.time() - this_hypercombo_starttime)
-        save_pickle(os.path.join(args.train_dir, 'global_stats'), 
-                    'hypercombo_iteratethrough_time_list.pkl', 
-                    hypercombo_iteratethrough_time_list)
-
-    save_pickle(os.path.join(args.train_dir, 'global_stats'), 'total_time.pkl', [total_used_time])
-
+    _, _, _, test_loader = get_dataloaders(args)
 
 
 if __name__ == "__main__":
