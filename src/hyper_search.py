@@ -100,8 +100,8 @@ def get_dataloaders(args):
             transforms.Lambda(apply_clahe),
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(size=image_size,
-                                padding=int(image_size*0.125),
-                                padding_mode='reflect'),
+                                  padding=int(image_size*0.125),
+                                  padding_mode='reflect'),
             transforms.ToTensor(),
             transforms.Normalize(mean=dataset_mean, std=dataset_std)
         ])
@@ -119,7 +119,7 @@ def get_dataloaders(args):
             transforms.ToPILImage(),
             transforms.Grayscale(num_output_channels=3),
             transforms.RandomHorizontalFlip(),
-            transforms.Resize(400), 
+            transforms.Resize(400),
             transforms.CenterCrop(320),
             transforms.ToTensor(),
             transforms.Normalize(mean=dataset_mean, std=dataset_std)
@@ -129,7 +129,7 @@ def get_dataloaders(args):
             transforms.ToPILImage(),
             transforms.Grayscale(num_output_channels=3),
             transforms.RandomHorizontalFlip(),
-            transforms.Resize(400), 
+            transforms.Resize(400),
             transforms.CenterCrop(320),
             transforms.ToTensor(),
             transforms.Normalize(mean=dataset_mean, std=dataset_std)
@@ -142,8 +142,8 @@ def get_dataloaders(args):
             transforms.Lambda(apply_clahe),
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(size=image_size,
-                                padding=int(image_size*0.125),
-                                padding_mode='reflect'),
+                                  padding=int(image_size*0.125),
+                                  padding_mode='reflect'),
             transforms.ToTensor(),
             transforms.Normalize(mean=dataset_mean, std=dataset_std)
         ])
@@ -162,8 +162,8 @@ def get_dataloaders(args):
     # Process unlabeled data
     if args.u_train_dataset_path != '':
         unlabel_loader = UnlabeledDataset(csv_file=args.u_train_dataset_path,
-                                        root_dir=args.root_dataset_path,
-                                        transform=transform_labeledtrain)
+                                          root_dir=args.root_dataset_path,
+                                          transform=transform_labeledtrain)
     else:
         unlabel_loader = None
 
@@ -171,44 +171,44 @@ def get_dataloaders(args):
     if dataset_name == "CheXpert":
         if args.l_train_dataset_path != '':
             train_loader = CheXpertDataset(csv_file=args.l_train_dataset_path,
-                                            root_dir=args.root_dataset_path,
-                                            transform=transform_labeledtrain)
+                                           root_dir=args.root_dataset_path,
+                                           transform=transform_labeledtrain)
         else:
             train_loader = None
 
         if args.val_dataset_path != '':
             valid_loader = CheXpertDataset(csv_file=args.val_dataset_path,
-                                        root_dir=args.root_dataset_path,
-                                        transform=transform_eval)
+                                           root_dir=args.root_dataset_path,
+                                           transform=transform_eval)
         else:
             valid_loader = None
 
         if args.test_dataset_path != '':
             test_loader = CheXpertDataset(csv_file=args.test_dataset_path,
-                                            root_dir=args.root_dataset_path,
-                                            transform=transform_eval)
+                                          root_dir=args.root_dataset_path,
+                                          transform=transform_eval)
         else:
             test_loader = None
 
     else:
         if args.l_train_dataset_path != '':
             train_loader = ImageCSVDataset(csv_file=args.l_train_dataset_path,
-                                            root_dir=args.root_dataset_path,
-                                            transform=transform_labeledtrain)
+                                           root_dir=args.root_dataset_path,
+                                           transform=transform_labeledtrain)
         else:
             train_loader = None
 
         if args.val_dataset_path != '':
             valid_loader = ImageCSVDataset(csv_file=args.val_dataset_path,
-                                        root_dir=args.root_dataset_path,
-                                        transform=transform_eval)
+                                           root_dir=args.root_dataset_path,
+                                           transform=transform_eval)
         else:
             valid_loader = None
 
         if args.test_dataset_path != '':
             test_loader = ImageCSVDataset(csv_file=args.test_dataset_path,
-                                            root_dir=args.root_dataset_path,
-                                            transform=transform_eval)
+                                          root_dir=args.root_dataset_path,
+                                          transform=transform_eval)
         else:
             test_loader = None
 
