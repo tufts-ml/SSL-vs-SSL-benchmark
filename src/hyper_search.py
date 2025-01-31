@@ -1,6 +1,6 @@
 import argparse
 from torchvision import transforms
-from src.dataset_csv import ImageCSVDataset, UnlabeledDataset, CheXpertDataset
+from src.dataset_csv import ImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 from src.apply_clahe import apply_clahe
 from src.config import config
 
@@ -82,12 +82,6 @@ def get_dataloaders(args):
                train_loader, unlabel_loader, valid_loader, test_loader
     """
     dataset_name = args.dataset_name
-    root_dataset_folder = args.root_dataset_path
-
-    train_csv_path = args.l_train_dataset_path
-    val_csv_path = args.val_dataset_path
-    test_csv_path = args.test_dataset_path
-    unlab_csv_path = args.u_train_dataset_path
 
     dataset_mean = config[args.dataset_name]['dataset_mean']
     dataset_std = config[args.dataset_name]['dataset_std']
@@ -161,56 +155,37 @@ def get_dataloaders(args):
 
     # Process unlabeled data
     if args.u_train_dataset_path != '':
-        unlabel_loader = UnlabeledDataset(csv_file=args.u_train_dataset_path,
-                                          root_dir=args.root_dataset_path,
-                                          transform=transform_labeledtrain)
+        unlabel_loader = UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
+                                                  root_dir=args.root_dataset_path,
+                                                  transform=transform_labeledtrain)
     else:
         unlabel_loader = None
 
     # Process labeled data
     if dataset_name == "CheXpert":
-        if args.l_train_dataset_path != '':
-            train_loader = CheXpertDataset(csv_file=args.l_train_dataset_path,
-                                           root_dir=args.root_dataset_path,
-                                           transform=transform_labeledtrain)
-        else:
-            train_loader = None
-
-        if args.val_dataset_path != '':
-            valid_loader = CheXpertDataset(csv_file=args.val_dataset_path,
-                                           root_dir=args.root_dataset_path,
-                                           transform=transform_eval)
-        else:
-            valid_loader = None
-
-        if args.test_dataset_path != '':
-            test_loader = CheXpertDataset(csv_file=args.test_dataset_path,
-                                          root_dir=args.root_dataset_path,
-                                          transform=transform_eval)
-        else:
-            test_loader = None
-
+        dataset_class = CheXpertDataset
     else:
-        if args.l_train_dataset_path != '':
-            train_loader = ImageCSVDataset(csv_file=args.l_train_dataset_path,
-                                           root_dir=args.root_dataset_path,
-                                           transform=transform_labeledtrain)
-        else:
-            train_loader = None
+        dataset_class = ImageCSVDataset
+    if args.l_train_dataset_path != '':
+        train_loader = dataset_class(csv_file=args.l_train_dataset_path,
+                                     root_dir=args.root_dataset_path,
+                                     transform=transform_labeledtrain)
+    else:
+        train_loader = None
 
-        if args.val_dataset_path != '':
-            valid_loader = ImageCSVDataset(csv_file=args.val_dataset_path,
-                                           root_dir=args.root_dataset_path,
-                                           transform=transform_eval)
-        else:
-            valid_loader = None
+    if args.val_dataset_path != '':
+        valid_loader = dataset_class(csv_file=args.val_dataset_path,
+                                     root_dir=args.root_dataset_path,
+                                     transform=transform_eval)
+    else:
+        valid_loader = None
 
-        if args.test_dataset_path != '':
-            test_loader = ImageCSVDataset(csv_file=args.test_dataset_path,
-                                          root_dir=args.root_dataset_path,
-                                          transform=transform_eval)
-        else:
-            test_loader = None
+    if args.test_dataset_path != '':
+        test_loader = dataset_class(csv_file=args.test_dataset_path,
+                                    root_dir=args.root_dataset_path,
+                                    transform=transform_eval)
+    else:
+        test_loader = None
 
     return train_loader, unlabel_loader, valid_loader, test_loader
 
