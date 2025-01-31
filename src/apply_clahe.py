@@ -3,12 +3,12 @@ import skimage.io
 import numpy as np
 from PIL import Image
 
+
 def apply_clahe(image):
     """Applies Contrast Limited Adaptive Histogram Equalization to an image
 
     Args:
         image (PIL Image): image to apply CLAHE to
-    
     Returns:
         PIL Image representing the transformed input
     """
