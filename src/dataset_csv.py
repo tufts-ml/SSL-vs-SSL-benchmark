@@ -7,7 +7,7 @@ from torchvision.datasets import VisionDataset
 from PIL import Image
 
 
-class ImageCSVDataset(VisionDataset):
+class LabeledImageCSVDataset(VisionDataset):
     """Dataset class for loading images from a CSV file.
 
     Args:
@@ -64,7 +64,7 @@ class ImageCSVDataset(VisionDataset):
             return image
 
 
-class UnlabeledImageCSVDataset(ImageCSVDataset):
+class UnlabeledImageCSVDataset(LabeledImageCSVDataset):
     """Dataset class for loading images from a CSV file without labels.
 
     Args:
