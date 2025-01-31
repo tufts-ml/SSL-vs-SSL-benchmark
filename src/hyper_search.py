@@ -1,6 +1,6 @@
 import argparse
 from torchvision import transforms
-from src.dataset_csv import ImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
+from src.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 from src.apply_clahe import apply_clahe
 from src.config import config
 
@@ -165,7 +165,7 @@ def get_dataloaders(args):
     if dataset_name == "CheXpert":
         dataset_class = CheXpertDataset
     else:
-        dataset_class = ImageCSVDataset
+        dataset_class = LabeledImageCSVDataset
     if args.l_train_dataset_path != '':
         train_loader = dataset_class(csv_file=args.l_train_dataset_path,
                                      root_dir=args.root_dataset_path,
