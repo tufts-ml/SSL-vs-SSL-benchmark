@@ -13,13 +13,18 @@ class ImageCSVDataset(VisionDataset):
     Args:
         csv_file (str): Path to the CSV file with image paths and labels.
         root_dir (str): Directory with all the images.
-        transforms (callable, optional): Optional transform to be applied on a sample.
-        transform (callable, optional): Optional transform to be applied on an image.
-        target_transform (callable, optional): Optional transform to be applied on a label.
+        transforms (callable, optional): Optional transform to be applied on a
+            sample.
+        transform (callable, optional): Optional transform to be applied on an
+            image.
+        target_transform (callable, optional): Optional transform to be applied
+            on a label.
     """
 
-    def __init__(self, csv_file, root_dir, transforms=None, transform=None, target_transform=None):
-        super().__init__(root=root_dir, transforms=transforms, transform=transform,
+    def __init__(self, csv_file, root_dir, transforms=None, transform=None,
+                 target_transform=None):
+        super().__init__(root=root_dir, transforms=transforms,
+                         transform=transform,
                          target_transform=target_transform)
         self.data = pd.read_csv(csv_file)
         self.root_dir = root_dir
@@ -34,6 +39,7 @@ class ImageCSVDataset(VisionDataset):
 
         img_name = os.path.join(self.root_dir, self.data.iloc[index, 0])
         image = io.imread(img_name)
+
         # Convert the image to PIL format if it’s not already
         if isinstance(image, np.ndarray):
             image = Image.fromarray(image)
@@ -49,14 +55,12 @@ class ImageCSVDataset(VisionDataset):
             # Return as a tuple (image, label) for compatibility
             if self.transforms is not None:
                 return self.transforms(image, label)
-
             return (image, label)
 
         # Working with unlabeled data
         else:
             if self.transforms is not None:
                 return self.transforms(image)
-
             return image
 
 
@@ -66,13 +70,18 @@ class UnlabeledImageCSVDataset(ImageCSVDataset):
     Args:
         csv_file (str): Path to the CSV file with image paths.
         root_dir (str): Directory with all the images.
-        transforms (callable, optional): Optional transform to be applied on a sample.
-        transform (callable, optional): Optional transform to be applied on an image.
-        target_transform (callable, optional): Optional transform to be applied on a label.
+        transforms (callable, optional): Optional transform to be applied on a
+            sample.
+        transform (callable, optional): Optional transform to be applied on an
+            image.
+        target_transform (callable, optional): Optional transform to be applied
+            on a label.
     """
 
-    def __init__(self, csv_file, root_dir, transforms=None, transform=None, target_transform=None):
-        super().__init__(csv_file, root_dir, transforms, transform, target_transform)
+    def __init__(self, csv_file, root_dir, transforms=None, transform=None,
+                 target_transform=None):
+        super().__init__(csv_file, root_dir, transforms, transform,
+                         target_transform)
 
     def __len__(self):
         super().__len__()
@@ -87,23 +96,28 @@ class CheXpertDataset(VisionDataset):
     Args:
         csv_file (str): Path to the CSV file with image paths and labels.
         root_dir (str): Directory with all the images.
-        transforms (callable, optional): Optional transform to be applied on a sample.
-        transform (callable, optional): Optional transform to be applied on an image.
-        target_transform (callable, optional): Optional transform to be applied on a label.
+        transforms (callable, optional): Optional transform to be applied on a
+            sample.
+        transform (callable, optional): Optional transform to be applied on an
+            image.
+        target_transform (callable, optional): Optional transform to be applied
+            on a label.
     """
 
-    def __init__(self, csv_file, root_dir, transforms=None, transform=None, target_transform=None):
-        super().__init__(root=root_dir, transforms=transforms, transform=transform,
+    def __init__(self, csv_file, root_dir, transforms=None, transform=None,
+                 target_transform=None):
+        super().__init__(root=root_dir, transforms=transforms,
+                         transform=transform,
                          target_transform=target_transform)
         self.data = pd.read_csv(csv_file)
         self.root_dir = root_dir
         self.transform = transform
         self.label_columns = ['Edema', 'Consolidation',
-                              'Atelectasis', 'Pneumothorax', 'Pleural Effusion']
+                              'Atelectasis', 'Pneumothorax',
+                              'Pleural Effusion']
 
     def __len__(self):
         return self.labels.shape[0]
-
 
     def __getitem__(self, index):
         if torch.is_tensor(index):
