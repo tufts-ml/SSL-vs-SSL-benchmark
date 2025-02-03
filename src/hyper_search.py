@@ -19,10 +19,11 @@ from src.utils.eval_utils import (
     EarlyStopping
 )
 from src.libml.utils import train_one_epoch
-from src.LabelOnlyBaseline.libml.utils.model import SupervisedMethod
+from src.methods.LabelOnlyBaseline import LabelOnlyBaseline
 from src.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 
 
+# TODO - Move this to a separate file?
 def get_dataloaders(args):
     """Get DataLoaders
 
@@ -151,8 +152,27 @@ def get_model(args):
     Returns:
         torch.nn.Module: model specified by args
     """
-    # TODO implement
-    return SupervisedMethod(args.arch, args)
+    if args.arch == 'resnet18':
+        from torchvision import models
+
+        model = models.resnet18(pretrained=args.use_pretrained)
+        model.fc = torch.nn.Linear(512, args.num_classes)
+
+    elif args.arch == 'wideresnet':
+        import backbone.wideresnet as models
+        model_depth = 28
+        model_width = 2
+
+        model = models.build_wideresnet(depth=model_depth,
+                                        widen_factor=model_width,
+                                        dropout=0.0,
+                                        num_classes=args.num_classes)
+
+    else:
+        raise NameError('Not implemented yet')
+
+    # TODO - Implement other methods, this should dynamically load the method
+    return LabelOnlyBaseline(model, args)
 
 
 def get_optimizer(args):
