@@ -1,8 +1,28 @@
+import time
+import torch
+import numpy as np
+import json
+import os
+from src.libml.utils import save_checkpoint, get_cosine_schedule_with_warmup, get_fixed_lr
 import argparse
+
+import src.config as config
+from torch.utils.tensorboard import SummaryWriter
+from src.libml.eval_utils import (
+    calculate_auprc,
+    calculate_auroc,
+    calculate_balanced_accuracy,
+    eval_model,
+    EarlyStopping
+)
+from src.libml.utils import train_one_epoch
+from src.LabelOnlyBaseline.libml.utils.model import SupervisedMethod
+
 from torchvision import transforms
 from src.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 from src.apply_clahe import apply_clahe
 from src.config import config
+
 
 
 def parse_args():
@@ -62,6 +82,8 @@ def parse_args():
     parser.add_argument('--ema_decay', default=0.999, type=float,
                         help='EMA decay rate')
     parser.add_argument('--total_hour', default=50, type=int, help='total hours to run')
+
+    parser.add_argument('--train_dir', help='directory to output the result')
 
     args = parser.parse_args()
 
@@ -200,7 +222,7 @@ def get_model(args):
         torch.nn.Module: model specified by args
     """
     # TODO implement
-    return None
+    return SupervisedMethod(args.arch, args)
 
 
 def get_optimizer(args):
@@ -217,12 +239,106 @@ def get_optimizer(args):
 
 
 def train(args):
+    precalculated_class_weights = config[args.dataset_name]['class_weights']
+    weights = torch.Tensor(precalculated_class_weights)
+    weights = weights.to(args.device)
+
     model = get_model(args)
+    model = model.to(args.device)
+
     optimizer = get_optimizer(args)
-    # TODO init SummaryWriter with unique name, then pass hyperparams
+    train_loader, unlabel_loader, val_loader, test_loader = get_dataloaders(args)
+
+    os.makedirs(args.train_dir, exist_ok=True)
+    writer = SummaryWriter(args.train_dir)
+
+    # Initialize scheduler based on args
+    if args.lr_schedule_type == 'CosineLR':
+        scheduler = get_cosine_schedule_with_warmup(
+            optimizer, args.lr_warmup_epochs, args.lr_cycle_epochs)
+    elif args.lr_schedule_type == 'FixedLR':
+        scheduler = get_fixed_lr(optimizer, args.lr_warmup_epochs, args.lr_cycle_epochs)
+    else:
+        raise NameError('Invalid lr_schedule_type')
+
+    # Initialize tracking variables
+    best_val_acc = 0
+    args.start_epoch = 0
+    current_count = 0
+    total_time = 0
+
+    # Early stopping
+    early_stopping = EarlyStopping(patience=args.patience, initial_count=current_count)
+
+    start_time = time.time()
+
+    for epoch in range(args.start_epoch, args.train_epoch):
+        # Train
+        train_losses = train_one_epoch(args, weights, train_loader,
+                                       model, optimizer, scheduler, epoch)
+
+        # Evaluate
+        val_loss, val_acc, val_labels, val_preds = eval_model(args, val_loader, model, epoch)
+
+        # Update best scores
+        is_best = val_acc > best_val_acc
+        if is_best:
+            best_val_acc = val_acc
+
+        # Calculate metrics
+        balanced_acc = calculate_balanced_accuracy(val_labels, val_preds)
+        auroc = calculate_auroc(val_labels, val_preds)
+        auprc = calculate_auprc(val_labels, val_preds)
+
+        # Log metrics
+        writer.add_scalar('train/loss', np.mean(train_losses), epoch)
+        writer.add_scalar('val/accuracy', val_acc, epoch)
+        writer.add_scalar('val/loss', val_loss, epoch)
+        writer.add_scalar('val/balanced_accuracy', balanced_acc, epoch)
+        writer.add_scalar('val/auroc', auroc, epoch)
+        writer.add_scalar('val/auprc', auprc, epoch)
+
+        # Save checkpoint
+        save_checkpoint({
+            'epoch': epoch + 1,
+            'state_dict': model.state_dict(),
+            'best_val_acc': best_val_acc,
+            'optimizer': optimizer.state_dict(),
+            'scheduler': scheduler.state_dict(),
+        }, is_best, args.train_dir)
+
+        # Early stopping check
+        if early_stopping(val_acc):
+            print(f'Early stopping triggered after epoch {epoch}')
+            break
+
+        # Time tracking
+        epoch_time = time.time() - start_time
+        total_time += epoch_time
+        start_time = time.time()
+
+    test_loss, test_acc, test_labels, test_preds = eval_model(args, test_loader, model, epoch)
+    writer.add_scalar('test/accuracy', test_acc, epoch)
+    writer.add_scalar('test/loss', test_loss, epoch)
+
+    # Save final summary
+    summary = {
+        'best_val_accuracy': best_val_acc,
+        'test_accuracy': test_acc,
+        'total_epochs': epoch + 1,
+        'total_time': total_time
+    }
+
+    with open(os.path.join(args.train_dir, 'training_summary.json'), 'w') as f:
+        json.dump(summary, f)
+
+    writer.close()
+    return best_val_acc, test_acc
 
 
 def main(args):
+    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
     # TODO Ray Tune hyperparameter search
     # https://pytorch.org/tutorials/beginner/hyperparameter_tuning_tutorial.html
     # TODO test eval
