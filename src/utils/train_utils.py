@@ -7,25 +7,41 @@ import torch
 import random
 import math
 from torch.optim.lr_scheduler import LambdaLR
-from src.libml.eval_utils import AverageMeter
+from src.utils.eval_utils import AverageMeter
 
 
-def sample_loguniform(low=0, high=1, size=1, coefficient=1, base=10):
-    power_value = np.random.uniform(low, high, size)[0]
-    return coefficient*np.power(base, power_value)
+class EarlyStopping:
+    """Early stops the training if validation acc doesn't improve after a given patience."""
 
+    def __init__(self, patience=20, initial_count=0, delta=0):
+        """
+        Args:
+            patience (int): How long to wait after last time validation loss improved.
+            initial_count (int): Initial count value for early stopping.
+            delta (float): Minimum change in the monitored quantity to qualify as an improvement.
+        """
 
-def sample_uniform(low=0.0, high=1.0, size=1, decimal=1):
-    return round(np.random.uniform(low=low, high=high, size=size)[0], 1)
+        self.patience = patience
+        self.counter = initial_count
+        self.best_score = None
+        self.early_stop = False
+        self.delta = delta
 
+    def __call__(self, val_acc):
 
-def str2bool(s):
-    if s == 'True':
-        return True
-    elif s == 'False':
-        return False
-    else:
-        raise NameError('Bad string')
+        score = val_acc
+
+        if self.best_score is None:
+            self.best_score = score
+
+        elif score <= self.best_score + self.delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+
+        else:
+            self.best_score = score
+            self.counter = 0
 
 
 def save_checkpoint(state, is_best, checkpoint, filename='last_checkpoint.pth.tar'):
@@ -42,6 +58,18 @@ def set_seed(seed):
     torch.manual_seed(seed)
 
 
+# TODO - Check if this is needed after Ray Tune integration
+def sample_loguniform(low=0, high=1, size=1, coefficient=1, base=10):
+    power_value = np.random.uniform(low, high, size)[0]
+    return coefficient*np.power(base, power_value)
+
+
+# TODO - Check if this is needed after Ray Tune integration
+def sample_uniform(low=0.0, high=1.0, size=1, decimal=1):
+    return round(np.random.uniform(low=low, high=high, size=size)[0], 1)
+
+
+# TODO - Check if this is needed after Ray Tune integration
 def get_cosine_schedule_with_warmup(optimizer,
                                     lr_warmup_epochs,
                                     lr_cycle_epochs,  # total train epochs
@@ -66,6 +94,7 @@ def get_cosine_schedule_with_warmup(optimizer,
     return LambdaLR(optimizer, _lr_lambda, last_epoch)
 
 
+# TODO - Check if this is needed after Ray Tune integration
 def get_fixed_lr(optimizer, lr_warmup_epochs, lr_cycle_epochs, num_cycles=7./16., last_epoch=-1):
     """Get fixed learning rate scheduler
 
@@ -81,6 +110,7 @@ def get_fixed_lr(optimizer, lr_warmup_epochs, lr_cycle_epochs, num_cycles=7./16.
     return LambdaLR(optimizer, _lr_lambda, last_epoch)
 
 
+# TODO - Check if this is needed after refactoring
 def train_one_epoch(args, weights, labeledtrain_loader, model, optimizer, scheduler, epoch):
     """
     Generic training loop compatible with MethodWrapper subclasses.
@@ -156,3 +186,12 @@ def train_one_epoch(args, weights, labeledtrain_loader, model, optimizer, schedu
     scheduler.step()
 
     return labeled_loss_this_epoch
+
+
+def str2bool(s):
+    if s == 'True':
+        return True
+    elif s == 'False':
+        return False
+    else:
+        raise NameError('Bad string')
