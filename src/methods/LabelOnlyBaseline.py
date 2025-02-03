@@ -2,7 +2,7 @@ from src.methods import MethodWrapper
 from torch.nn import functional as func
 
 
-class SupervisedMethod(MethodWrapper):
+class LabelOnlyBaseline(MethodWrapper):
     def forward(self, l_data, l_labels, u_data=None):
         # Forward pass
         logits = self.backbone(l_data)
