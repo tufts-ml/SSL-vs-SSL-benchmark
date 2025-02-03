@@ -16,46 +16,6 @@ from sklearn.metrics import roc_auc_score
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['get_mean_and_std', 'AverageMeter', 'eval_model',
-           'save_pickle', 'calculate_plain_accuracy', 'calculate_balanced_accuracy',
-           'EarlyStopping']
-
-
-class EarlyStopping:
-    """Early stops the training if validation acc doesn't improve after a given patience."""
-
-    def __init__(self, patience=20, initial_count=0, delta=0):
-        """
-        Args:
-            patience (int): How long to wait after last time validation loss improved.
-                            Default: 20
-            delta (float): Minimum change in the monitored quantity to qualify as an improvement.
-                            Default: 0
-
-        """
-
-        self.patience = patience
-        self.counter = initial_count
-        self.best_score = None
-        self.early_stop = False
-        self.delta = delta
-
-    def __call__(self, val_acc):
-
-        score = val_acc
-
-        if self.best_score is None:
-            self.best_score = score
-
-        elif score <= self.best_score + self.delta:
-            self.counter += 1
-            if self.counter >= self.patience:
-                self.early_stop = True
-
-        else:
-            self.best_score = score
-            self.counter = 0
-
 
 def eval_model(args, data_loader, raw_model, epoch,
                evaluation_criterion='plain_accuracy', weights=None):
@@ -136,7 +96,6 @@ def calculate_plain_accuracy(output, target):
 
 
 def calculate_balanced_accuracy(output, target):
-
     confusion_matrix = sklearn_cm(target, output.argmax(1))
     n_class = confusion_matrix.shape[0]
     print('Inside calculate_balanced_accuracy, {} classes passed in'.format(n_class), flush=True)
