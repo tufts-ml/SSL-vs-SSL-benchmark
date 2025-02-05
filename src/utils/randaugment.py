@@ -163,7 +163,6 @@ def fixmatch_augment_pool():
     return augs
 
 
-
 class RandAugmentMC(object):
     def __init__(self, n, m):
         assert n >= 1
