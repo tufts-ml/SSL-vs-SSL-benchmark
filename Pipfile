@@ -24,6 +24,7 @@ tensorboard = "*"
 scikit-learn = "*"
 pandas = "*"
 tqdm = "*"
+ray = "*"
 flake8 = "*"
 
 [torch_cpu]

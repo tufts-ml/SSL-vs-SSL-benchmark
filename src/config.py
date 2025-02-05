@@ -1,4 +1,7 @@
-config = {
+from ray import tune
+
+
+dataset_config = {
     'TissueMNIST': {'dataset_mean': (0.0988, 0.0988, 0.0988),
                     'dataset_std': (0.0785, 0.0785, 0.0785),
                     'image_size': 28,
@@ -36,4 +39,11 @@ config = {
                  'class_weights': [0.3027, 0.6973],
                  'nimg_per_epoch': 3500,
                  'num_classes': 2},
+}
+
+method_config = {
+    'LabelOnlyBaseline': {
+        "lr": tune.loguniform(1e-5, 1e-2),
+        "wd": tune.loguniform(1e-6, 1e-3),
+    }
 }

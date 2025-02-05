@@ -33,7 +33,7 @@ from src.randaugment import RandAugmentMC
 from src.FlexMatch.libml.utils import save_pickle
 from src.FlexMatch.libml.utils import train_one_epoch, eval_model
 from src.FlexMatch.libml.utils import EarlyStopping
-from src.config import config
+from src.config import dataset_config
 
 
 logger = logging.getLogger(__name__)
@@ -217,14 +217,14 @@ def create_model(args):
 
 def main(args):
     
-    precalculated_class_weights = config[args.dataset_name]['class_weights']
+    precalculated_class_weights = dataset_config[args.dataset_name]['class_weights']
     weights = torch.Tensor(precalculated_class_weights)
 #     print('weights used is {}'.format(weights))
     weights = weights.to(args.device)
     
-    dataset_mean = config[args.dataset_name]['dataset_mean']
-    dataset_std = config[args.dataset_name]['dataset_std']
-    image_size = config[args.dataset_name]['image_size']
+    dataset_mean = dataset_config[args.dataset_name]['dataset_mean']
+    dataset_std = dataset_config[args.dataset_name]['dataset_std']
+    image_size = dataset_config[args.dataset_name]['image_size']
 
     
     transform_labeledtrain = transforms.Compose([
@@ -563,8 +563,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     args.use_pretrained = str2bool(args.use_pretrained)
-    args.nimg_per_epoch = config[args.dataset_name]['nimg_per_epoch'] #total size of labeled + unlabeled set for TissueMNIST
-    args.num_classes = config[args.dataset_name]['num_classes']
+    args.nimg_per_epoch = dataset_config[args.dataset_name]['nimg_per_epoch'] #total size of labeled + unlabeled set for TissueMNIST
+    args.num_classes = dataset_config[args.dataset_name]['num_classes']
     
     
     cuda = torch.cuda.is_available()
