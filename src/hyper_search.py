@@ -1,3 +1,10 @@
+import argparse
+from functools import partial
+from pathlib import Path
+import torch
+from ray import tune
+from ray.tune.schedulers import ASHAScheduler
+import ray.cloudpickle as pickle
 import time
 import torch
 import numpy as np
@@ -286,12 +293,68 @@ def train(args):
     return best_val_acc, test_acc
 
 
+def test_accuracy(model, device, args):
+    model.eval()
+    correct = 0
+    total = 0
+
+    _, _, _, test_loader = get_dataloaders(args)
+
+    with torch.no_grad():
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+    return correct / total
+
+
 def main(args):
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # TODO Ray Tune hyperparameter search
     # https://pytorch.org/tutorials/beginner/hyperparameter_tuning_tutorial.html
+    method_config = config.method_config[args.method]
+    scheduler = ASHAScheduler(
+        metric="val_acc",
+        mode="max",
+        max_t=args.train_epoch,
+        grace_period=1,
+        reduction_factor=2,
+    )
+
+    result = tune.run(
+        partial(train, args=args),
+        config=method_config,
+        num_samples=20,  # TODO adjust
+        scheduler=scheduler,
+        resources_per_trial={"cpu": 2, "gpu": 1},  # TODO adjust
+        local_dir=args.train_dir,
+    )
+
+    best_trial = result.get_best_trial("val_acc", "max", "last")
+    print(f"Best trial config: {best_trial.config}")
+    print(f"Best trial final validation accuracy: {best_trial.last_result['val_acc']}")
+    print(f"Best trial final test accuracy: {best_trial.last_result['test_acc']}")
     # TODO test eval
+    best_trained_model = get_model(args)
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda:0"
+    best_trained_model.to(device)
+
+    best_checkpoint = result.get_best_checkpoint(trial=best_trial, metric="accuracy", mode="max")
+    with best_checkpoint.as_directory() as checkpoint_dir:
+        data_path = Path(checkpoint_dir) / "data.pkl"
+        with open(data_path, "rb") as fp:
+            best_checkpoint_data = pickle.load(fp)
+
+    best_trained_model.load_state_dict(best_checkpoint_data["net_state_dict"])
+    test_acc = test_accuracy(best_trained_model, device, args)
+    print("Best trial test set accuracy: {}".format(test_acc))
+
     _, _, _, test_loader = get_dataloaders(args)
 
 
