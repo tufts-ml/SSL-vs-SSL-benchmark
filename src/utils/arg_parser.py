@@ -1,5 +1,5 @@
 import argparse
-from src.config import dataset_config
+from config import dataset_config
 
 
 def parse_args():
