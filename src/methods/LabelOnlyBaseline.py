@@ -1,4 +1,4 @@
-from src.methods import MethodWrapper
+from methods.methods import MethodWrapper
 from torch.nn import functional as func
 
 
