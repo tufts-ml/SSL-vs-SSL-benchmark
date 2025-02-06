@@ -10,22 +10,23 @@ import os
 from torchvision import transforms
 import torch.optim as optim
 from tqdm import tqdm
+import logging
 
 
-from src.utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_schedule_with_warmup,
-                                   get_fixed_lr, EarlyStopping)
-from src.utils.apply_clahe import apply_clahe
-import src.config as config
+from utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_schedule_with_warmup,
+                               get_fixed_lr, EarlyStopping)
+from utils.apply_clahe import apply_clahe
+import config as config
 from torch.utils.tensorboard import SummaryWriter
-from src.utils.eval_utils import (
+from utils.eval_utils import (
     calculate_auprc,
     calculate_auroc,
     calculate_balanced_accuracy,
     eval_model,
 )
-from src.utils.arg_parser import parse_args
-from src.methods.LabelOnlyBaseline import LabelOnlyBaseline
-from src.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
+from utils.arg_parser import parse_args
+from methods.LabelOnlyBaseline import LabelOnlyBaseline
+from dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 
 
 # TODO - Move this to a separate file?
@@ -39,6 +40,8 @@ def get_dataloaders(args):
         tuple: 4 DataLoaders, which may be none
                train_loader, unlabel_loader, valid_loader, test_loader
     """
+    logger.info(f"Loading dataset: {args.dataset_name}")
+
     dataset_name = args.dataset_name
 
     dataset_mean = config[args.dataset_name]['dataset_mean']
@@ -157,6 +160,8 @@ def get_model(args):
     Returns:
         torch.nn.Module: model specified by args
     """
+    logger.info(f"Initializing model architecture: {args.arch}")
+
     if args.arch == 'resnet18':
         from torchvision import models
 
@@ -256,6 +261,8 @@ def train(args, config):
     total_time = 0
     early_stopping = EarlyStopping(patience=args.patience)
     start_time = time.time()
+
+    logger.info(f"Starting training for {args.train_epoch} epochs.")
 
     # Iterate over epochs
     for epoch in range(args.start_epoch, args.train_epoch):
@@ -428,5 +435,12 @@ def main(args):
 
 
 if __name__ == "__main__":
+    # Set up logging
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
+
     args = parse_args()
+
+    logger.info(f"Arguments: {vars(args)}")
+
     main(args)
