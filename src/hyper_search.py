@@ -299,7 +299,8 @@ def train(args, config):
 
             # Update progress bar
             p_bar.set_description(
-                f"Train Epoch: {epoch+1}/{args.train_epoch}. Iter: {batch_idx+1}/{n_steps_per_epoch}. "
+                f"Train Epoch: {epoch+1}/{args.train_epoch}. "
+                f"Iter: {batch_idx+1}/{n_steps_per_epoch}. "
                 f"LR: {scheduler.get_last_lr()[0]:.4f}. Data: {data_time.avg:.3f}s. "
                 f"Batch: {batch_time.avg:.3f}s. Loss: {labeled_loss.avg:.4f}"
             )
