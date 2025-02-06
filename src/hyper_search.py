@@ -1,4 +1,3 @@
-import argparse
 from functools import partial
 from pathlib import Path
 import torch
@@ -6,26 +5,28 @@ from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 import ray.cloudpickle as pickle
 import time
-import torch
-import numpy as np
 import json
 import os
 from torchvision import transforms
+import torch.optim as optim
+from tqdm import tqdm
+import logging
 
 
-from src.utils.train_utils import save_checkpoint, get_cosine_schedule_with_warmup, get_fixed_lr, EarlyStopping
-from src.utils.arg_parser import parse_args
-from src.utils.apply_clahe import apply_clahe
-import src.config as config
+from utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_schedule_with_warmup,
+                               get_fixed_lr, EarlyStopping)
+from utils.apply_clahe import apply_clahe
+import config as config
 from torch.utils.tensorboard import SummaryWriter
-from src.utils.eval_utils import (
+from utils.eval_utils import (
     calculate_auprc,
     calculate_auroc,
     calculate_balanced_accuracy,
     eval_model,
 )
-from src.methods.LabelOnlyBaseline import LabelOnlyBaseline
-from src.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
+from utils.arg_parser import parse_args
+from methods.LabelOnlyBaseline import LabelOnlyBaseline
+from dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 
 
 # TODO - Move this to a separate file?
@@ -39,6 +40,8 @@ def get_dataloaders(args):
         tuple: 4 DataLoaders, which may be none
                train_loader, unlabel_loader, valid_loader, test_loader
     """
+    logger.info(f"Loading dataset: {args.dataset_name}")
+
     dataset_name = args.dataset_name
 
     dataset_mean = config[args.dataset_name]['dataset_mean']
@@ -157,6 +160,8 @@ def get_model(args):
     Returns:
         torch.nn.Module: model specified by args
     """
+    logger.info(f"Initializing model architecture: {args.arch}")
+
     if args.arch == 'resnet18':
         from torchvision import models
 
@@ -180,7 +185,7 @@ def get_model(args):
     return LabelOnlyBaseline(model, args)
 
 
-def get_optimizer(args):
+def get_optimizer(args, model: torch.nn.Module):
     """Get optimizer for learning
 
     Args:
@@ -189,25 +194,36 @@ def get_optimizer(args):
     Returns:
         torch.optim.Optimizer: optimizer specified by args
     """
-    # TODO implement
-    return None
+    no_decay = ['bias', 'bn']
+    grouped_parameters = [
+        {'params': [p for n, p in model.named_parameters() if not any(
+            nd in n for nd in no_decay)], 'weight_decay': args.wd},
+        {'params': [p for n, p in model.named_parameters() if any(
+            nd in n for nd in no_decay)], 'weight_decay': 0.0}
+    ]
+
+    if args.optimizer_type == 'SGD':
+        optimizer = optim.SGD(grouped_parameters, lr=args.lr, momentum=0.9, nesterov=args.nesterov)
+
+    elif args.optimizer_type == 'Adam':
+        optimizer = optim.Adam(grouped_parameters, lr=args.lr)
+
+    else:
+        raise NameError('Not supported optimizer setting')
+
+    return optimizer
 
 
-def train(args):
-    precalculated_class_weights = config[args.dataset_name]['class_weights']
-    weights = torch.Tensor(precalculated_class_weights)
-    weights = weights.to(args.device)
+def get_lr_scheduler(optimizer, args):
+    """Get learning rate scheduler
 
-    model = get_model(args)
-    model = model.to(args.device)
+    Args:
+        optimizer (torch.optim.Optimizer): optimizer
+        args (Namespace): parsed arguments
 
-    optimizer = get_optimizer(args)
-    train_loader, unlabel_loader, val_loader, test_loader = get_dataloaders(args)
-
-    os.makedirs(args.train_dir, exist_ok=True)
-    writer = SummaryWriter(args.train_dir)
-
-    # Initialize scheduler based on args
+    Returns:
+        torch.optim.lr_scheduler.LambdaLR: learning rate scheduler
+    """
     if args.lr_schedule_type == 'CosineLR':
         scheduler = get_cosine_schedule_with_warmup(
             optimizer, args.lr_warmup_epochs, args.lr_cycle_epochs)
@@ -216,26 +232,93 @@ def train(args):
     else:
         raise NameError('Invalid lr_schedule_type')
 
+    return scheduler
+
+
+def train(args, config):
+    if args.dataset_name not in config:
+        raise ValueError(f"Dataset {args.dataset_name} not found in config.")
+
+    # Use Ray Tune's config for hyperparameters
+    for key, value in config.items():
+        setattr(args, key, value)
+
+    precalculated_class_weights = config[args.dataset_name]['class_weights']
+    weights = torch.Tensor(precalculated_class_weights).to(args.device)
+
+    model = get_model(args)
+    model = model.to(args.device)
+
+    optimizer = get_optimizer(args, model)
+    scheduler = get_lr_scheduler(optimizer, args)
+    train_loader, unlabel_loader, val_loader, test_loader = get_dataloaders(args)
+
+    os.makedirs(args.train_dir, exist_ok=True)
+    writer = SummaryWriter(args.train_dir)
+
     # Initialize tracking variables
     best_val_acc = 0
-    args.start_epoch = 0
-    current_count = 0
     total_time = 0
-
-    # Early stopping
-    early_stopping = EarlyStopping(patience=args.patience, initial_count=current_count)
-
+    early_stopping = EarlyStopping(patience=args.patience)
     start_time = time.time()
 
-    for epoch in range(args.start_epoch, args.train_epoch):
-        # Train
-        train_losses = train_func(args, weights, train_loader,
-                                  model, optimizer, scheduler, epoch)
+    logger.info(f"Starting training for {args.train_epoch} epochs.")
 
-        # Evaluate
+    # Iterate over epochs
+    for epoch in range(args.start_epoch, args.train_epoch):
+        model.train()
+
+        # Tracking metrics
+        batch_time = AverageMeter()
+        data_time = AverageMeter()
+        labeled_loss = AverageMeter()
+
+        n_steps_per_epoch = args.nimg_per_epoch // args.labeledtrain_batchsize
+        p_bar = tqdm(range(n_steps_per_epoch), disable=False)
+
+        labeledtrain_iter = iter(train_loader)
+
+        for batch_idx in range(n_steps_per_epoch):
+            try:
+                l_input, l_labels = next(labeledtrain_iter)
+            except StopIteration:
+                labeledtrain_iter = iter(train_loader)
+                l_input, l_labels = next(labeledtrain_iter)
+
+            data_time.update(time.time() - start_time)
+            l_input, l_labels = l_input.to(args.device).float(), l_labels.to(args.device).long()
+
+            # Forward pass
+            loss, supervised_loss, unsupervised_loss = model(l_input, l_labels, weights)
+            if unsupervised_loss is not None:
+                total_loss = supervised_loss + unsupervised_loss
+            else:
+                total_loss = supervised_loss
+            total_loss.backward()
+
+            labeled_loss.update(supervised_loss.item())
+
+            optimizer.step()
+            model.zero_grad()
+
+            batch_time.update(time.time() - start_time)
+            start_time = time.time()
+
+            # Update progress bar
+            p_bar.set_description(
+                f"Train Epoch: {epoch+1}/{args.train_epoch}. "
+                f"Iter: {batch_idx+1}/{n_steps_per_epoch}. "
+                f"LR: {scheduler.get_last_lr()[0]:.4f}. Data: {data_time.avg:.3f}s. "
+                f"Batch: {batch_time.avg:.3f}s. Loss: {labeled_loss.avg:.4f}"
+            )
+            p_bar.update()
+
+        p_bar.close()
+        scheduler.step()
+
+        # Validation
         val_loss, val_acc, val_labels, val_preds = eval_model(args, val_loader, model, epoch)
 
-        # Update best scores
         is_best = val_acc > best_val_acc
         if is_best:
             best_val_acc = val_acc
@@ -246,14 +329,13 @@ def train(args):
         auprc = calculate_auprc(val_labels, val_preds)
 
         # Log metrics
-        writer.add_scalar('train/loss', np.mean(train_losses), epoch)
+        writer.add_scalar('train/loss', labeled_loss.avg, epoch)
         writer.add_scalar('val/accuracy', val_acc, epoch)
         writer.add_scalar('val/loss', val_loss, epoch)
         writer.add_scalar('val/balanced_accuracy', balanced_acc, epoch)
         writer.add_scalar('val/auroc', auroc, epoch)
         writer.add_scalar('val/auprc', auprc, epoch)
 
-        # Save checkpoint
         save_checkpoint({
             'epoch': epoch + 1,
             'state_dict': model.state_dict(),
@@ -267,11 +349,9 @@ def train(args):
             print(f'Early stopping triggered after epoch {epoch}')
             break
 
-        # Time tracking
-        epoch_time = time.time() - start_time
-        total_time += epoch_time
-        start_time = time.time()
+        total_time += batch_time.avg
 
+    # Final testing
     test_loss, test_acc, test_labels, test_preds = eval_model(args, test_loader, model, epoch)
     writer.add_scalar('test/accuracy', test_acc, epoch)
     writer.add_scalar('test/loss', test_loss, epoch)
@@ -288,6 +368,10 @@ def train(args):
         json.dump(summary, f)
 
     writer.close()
+
+    # Report to Ray Tune
+    tune.report(val_acc=best_val_acc, test_acc=test_acc)
+
     return best_val_acc, test_acc
 
 
@@ -312,8 +396,6 @@ def test_accuracy(model, device, args):
 def main(args):
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    # TODO Ray Tune hyperparameter search
-    # https://pytorch.org/tutorials/beginner/hyperparameter_tuning_tutorial.html
     method_config = config.method_config[args.method]
     scheduler = ASHAScheduler(
         metric="val_acc",
@@ -332,30 +414,33 @@ def main(args):
         local_dir=args.train_dir,
     )
 
+    # Get the best trial
     best_trial = result.get_best_trial("val_acc", "max", "last")
     print(f"Best trial config: {best_trial.config}")
     print(f"Best trial final validation accuracy: {best_trial.last_result['val_acc']}")
     print(f"Best trial final test accuracy: {best_trial.last_result['test_acc']}")
-    # TODO test eval
-    best_trained_model = get_model(args)
-    device = "cpu"
-    if torch.cuda.is_available():
-        device = "cuda:0"
-    best_trained_model.to(device)
 
-    best_checkpoint = result.get_best_checkpoint(trial=best_trial, metric="accuracy", mode="max")
+    # Load best model and evaluate on the test set
+    best_trained_model = get_model(args).to(args.device)
+
+    best_checkpoint = result.get_best_checkpoint(trial=best_trial, metric="val_acc", mode="max")
     with best_checkpoint.as_directory() as checkpoint_dir:
         data_path = Path(checkpoint_dir) / "data.pkl"
         with open(data_path, "rb") as fp:
             best_checkpoint_data = pickle.load(fp)
 
     best_trained_model.load_state_dict(best_checkpoint_data["net_state_dict"])
-    test_acc = test_accuracy(best_trained_model, device, args)
-    print("Best trial test set accuracy: {}".format(test_acc))
-
-    _, _, _, test_loader = get_dataloaders(args)
+    test_acc = test_accuracy(best_trained_model, args.device, args)
+    print(f"Best trial test set accuracy: {test_acc}")
 
 
 if __name__ == "__main__":
+    # Set up logging
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
+
     args = parse_args()
+
+    logger.info(f"Arguments: {vars(args)}")
+
     main(args)

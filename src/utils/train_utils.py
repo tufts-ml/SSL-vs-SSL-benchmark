@@ -7,7 +7,6 @@ import torch
 import random
 import math
 from torch.optim.lr_scheduler import LambdaLR
-from src.utils.eval_utils import AverageMeter
 
 
 class EarlyStopping:
@@ -193,11 +192,12 @@ def str2bool(s):
         return False
     else:
         raise NameError('Bad string')
-    
+
+
 class AverageMeter(object):
-"""Computes and stores the average and current value
+    """Computes and stores the average and current value
     Imported from https://github.com/pytorch/examples/blob/master/imagenet/main.py#L247-L262
-"""
+    """
 
     def __init__(self):
         self.reset()
