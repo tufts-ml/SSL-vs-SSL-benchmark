@@ -69,7 +69,6 @@ def sample_uniform(low=0.0, high=1.0, size=1, decimal=1):
     return round(np.random.uniform(low=low, high=high, size=size)[0], 1)
 
 
-# TODO - Check if this is needed after Ray Tune integration
 def get_cosine_schedule_with_warmup(optimizer,
                                     lr_warmup_epochs,
                                     lr_cycle_epochs,  # total train epochs
@@ -94,7 +93,6 @@ def get_cosine_schedule_with_warmup(optimizer,
     return LambdaLR(optimizer, _lr_lambda, last_epoch)
 
 
-# TODO - Check if this is needed after Ray Tune integration
 def get_fixed_lr(optimizer, lr_warmup_epochs, lr_cycle_epochs, num_cycles=7./16., last_epoch=-1):
     """Get fixed learning rate scheduler
 
@@ -195,3 +193,23 @@ def str2bool(s):
         return False
     else:
         raise NameError('Bad string')
+    
+class AverageMeter(object):
+"""Computes and stores the average and current value
+    Imported from https://github.com/pytorch/examples/blob/master/imagenet/main.py#L247-L262
+"""
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
