@@ -13,7 +13,7 @@ import os
 from torchvision import transforms
 
 
-from src.utils.train_utils import save_checkpoint, get_cosine_schedule_with_warmup, get_fixed_lr
+from src.utils.train_utils import save_checkpoint, get_cosine_schedule_with_warmup, get_fixed_lr, EarlyStopping
 from src.utils.arg_parser import parse_args
 from src.utils.apply_clahe import apply_clahe
 import src.config as config
@@ -23,9 +23,7 @@ from src.utils.eval_utils import (
     calculate_auroc,
     calculate_balanced_accuracy,
     eval_model,
-    EarlyStopping
 )
-from src.libml.utils import train_one_epoch
 from src.methods.LabelOnlyBaseline import LabelOnlyBaseline
 from src.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 
@@ -231,8 +229,8 @@ def train(args):
 
     for epoch in range(args.start_epoch, args.train_epoch):
         # Train
-        train_losses = train_one_epoch(args, weights, train_loader,
-                                       model, optimizer, scheduler, epoch)
+        train_losses = train_func(args, weights, train_loader,
+                                  model, optimizer, scheduler, epoch)
 
         # Evaluate
         val_loss, val_acc, val_labels, val_preds = eval_model(args, val_loader, model, epoch)
