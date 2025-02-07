@@ -24,8 +24,9 @@ tensorboard = "*"
 scikit-learn = "*"
 pandas = "*"
 tqdm = "*"
-ray = "*"
 flake8 = "*"
+ray = {extras = ["tune"], version = "*"}
+scikit-image = "*"
 
 [torch_cpu]
 torch = {index="pytorch_cpu"}
