@@ -13,20 +13,20 @@ from tqdm import tqdm
 import logging
 
 
-from utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_schedule_with_warmup,
-                               get_fixed_lr, EarlyStopping)
-from utils.apply_clahe import apply_clahe
-import config as config
+from src.utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_schedule_with_warmup,
+                                   get_fixed_lr, EarlyStopping)
+from src.utils.apply_clahe import apply_clahe
+from src.config import dataset_config, method_config
 from torch.utils.tensorboard import SummaryWriter
-from utils.eval_utils import (
+from src.utils.eval_utils import (
     calculate_auprc,
     calculate_auroc,
     calculate_balanced_accuracy,
     eval_model,
 )
-from utils.arg_parser import parse_args
-from methods.LabelOnlyBaseline import LabelOnlyBaseline
-from dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
+from src.utils.arg_parser import parse_args
+from src.methods.LabelOnlyBaseline import LabelOnlyBaseline
+from src.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 
 
 # TODO - Move this to a separate file?
@@ -44,9 +44,9 @@ def get_dataloaders(args):
 
     dataset_name = args.dataset_name
 
-    dataset_mean = config[args.dataset_name]['dataset_mean']
-    dataset_std = config[args.dataset_name]['dataset_std']
-    image_size = config[args.dataset_name]['image_size']
+    dataset_mean = dataset_config[args.dataset_name]['dataset_mean']
+    dataset_std = dataset_config[args.dataset_name]['dataset_std']
+    image_size = dataset_config[args.dataset_name]['image_size']
 
     # data transformations for TMED2
     if dataset_name == "TMED2":
@@ -116,11 +116,11 @@ def get_dataloaders(args):
 
     # Process unlabeled data
     if args.u_train_dataset_path != '':
-        unlabel_loader = UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
-                                                  root_dir=args.root_dataset_path,
-                                                  transform=transform_labeledtrain)
+        unlabel_dataset = UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
+                                                   root_dir=args.root_dataset_path,
+                                                   transform=transform_labeledtrain)
     else:
-        unlabel_loader = None
+        unlabel_dataset = None
 
     # Process labeled data
     if dataset_name == "CheXpert":
@@ -128,23 +128,56 @@ def get_dataloaders(args):
     else:
         dataset_class = LabeledImageCSVDataset
     if args.l_train_dataset_path != '':
-        train_loader = dataset_class(csv_file=args.l_train_dataset_path,
-                                     root_dir=args.root_dataset_path,
-                                     transform=transform_labeledtrain)
+        train_dataset = dataset_class(csv_file=args.l_train_dataset_path,
+                                      root_dir=args.root_dataset_path,
+                                      transform=transform_labeledtrain)
     else:
-        train_loader = None
+        train_dataset = None
 
     if args.val_dataset_path != '':
-        valid_loader = dataset_class(csv_file=args.val_dataset_path,
+        valid_dataset = dataset_class(csv_file=args.val_dataset_path,
+                                      root_dir=args.root_dataset_path,
+                                      transform=transform_eval)
+    else:
+        valid_dataset = None
+
+    if args.test_dataset_path != '':
+        test_dataset = dataset_class(csv_file=args.test_dataset_path,
                                      root_dir=args.root_dataset_path,
                                      transform=transform_eval)
     else:
+        test_dataset = None
+
+    # Create dataloaders
+    train_loader = torch.utils.data.DataLoader(train_dataset,
+                                               batch_size=args.labeledtrain_batchsize,
+                                               shuffle=True,
+                                               num_workers=args.num_workers,
+                                               pin_memory=True,
+                                               drop_last=True)
+    if unlabel_dataset is not None:
+        unlabel_loader = torch.utils.data.DataLoader(unlabel_dataset,
+                                                     batch_size=args.unlabeledtrain_batchsize,
+                                                     shuffle=True,
+                                                     num_workers=args.num_workers,
+                                                     pin_memory=True,
+                                                     drop_last=True)
+    else:
+        unlabel_loader = None
+
+    if valid_dataset is not None:
+        valid_loader = torch.utils.data.DataLoader(valid_dataset,
+                                                   shuffle=False,
+                                                   num_workers=args.num_workers,
+                                                   pin_memory=True)
+    else:
         valid_loader = None
 
-    if args.test_dataset_path != '':
-        test_loader = dataset_class(csv_file=args.test_dataset_path,
-                                    root_dir=args.root_dataset_path,
-                                    transform=transform_eval)
+    if test_dataset is not None:
+        test_loader = torch.utils.data.DataLoader(test_dataset,
+                                                  shuffle=False,
+                                                  num_workers=args.num_workers,
+                                                  pin_memory=True)
     else:
         test_loader = None
 
@@ -197,16 +230,17 @@ def get_optimizer(args, model: torch.nn.Module):
     no_decay = ['bias', 'bn']
     grouped_parameters = [
         {'params': [p for n, p in model.named_parameters() if not any(
-            nd in n for nd in no_decay)], 'weight_decay': args.wd},
+            nd in n for nd in no_decay)], 'weight_decay': 0.01},
         {'params': [p for n, p in model.named_parameters() if any(
             nd in n for nd in no_decay)], 'weight_decay': 0.0}
     ]
 
     if args.optimizer_type == 'SGD':
-        optimizer = optim.SGD(grouped_parameters, lr=args.lr, momentum=0.9, nesterov=args.nesterov)
+        optimizer = optim.SGD(grouped_parameters, lr=0.1,
+                              momentum=0.9, nesterov=args.nesterov)
 
     elif args.optimizer_type == 'Adam':
-        optimizer = optim.Adam(grouped_parameters, lr=args.lr)
+        optimizer = optim.Adam(grouped_parameters, lr=0.1)
 
     else:
         raise NameError('Not supported optimizer setting')
@@ -235,16 +269,17 @@ def get_lr_scheduler(optimizer, args):
     return scheduler
 
 
-def train(args, config):
-    if args.dataset_name not in config:
+def train(args, method_config, dataset_config):
+    if args.dataset_name not in dataset_config:
         raise ValueError(f"Dataset {args.dataset_name} not found in config.")
 
     # Use Ray Tune's config for hyperparameters
-    for key, value in config.items():
+    for key, value in method_config.items():
         setattr(args, key, value)
 
-    precalculated_class_weights = config[args.dataset_name]['class_weights']
+    precalculated_class_weights = dataset_config[args.dataset_name]['class_weights']
     weights = torch.Tensor(precalculated_class_weights).to(args.device)
+    args.weights = weights
 
     model = get_model(args)
     model = model.to(args.device)
@@ -286,10 +321,15 @@ def train(args, config):
                 l_input, l_labels = next(labeledtrain_iter)
 
             data_time.update(time.time() - start_time)
-            l_input, l_labels = l_input.to(args.device).float(), l_labels.to(args.device).long()
+            l_input = l_input.to(args.device).float()
+            l_labels = l_labels.to(args.device).long()
+
+            print("l_input shape: ", l_input.shape)
+            print("l_labels shape: ", l_labels.shape)
 
             # Forward pass
-            loss, supervised_loss, unsupervised_loss = model(l_input, l_labels, weights)
+            logits, loss, supervised_loss, unsupervised_loss = model.forward(
+                l_input, l_labels, weights)
             if unsupervised_loss is not None:
                 total_loss = supervised_loss + unsupervised_loss
             else:
@@ -396,7 +436,7 @@ def test_accuracy(model, device, args):
 def main(args):
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    method_config = config.method_config[args.method]
+    method_config = method_config[args.method]
     scheduler = ASHAScheduler(
         metric="val_acc",
         mode="max",
@@ -436,11 +476,14 @@ def main(args):
 
 if __name__ == "__main__":
     # Set up logging
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
 
     args = parse_args()
+    args.device = "cuda" if torch.cuda.is_available() else "cpu"
 
     logger.info(f"Arguments: {vars(args)}")
 
-    main(args)
+    # Run training
+    train(args, method_config["LabelOnlyBaseline"], dataset_config)
+
+    # main(args)

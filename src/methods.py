@@ -12,6 +12,7 @@ class MethodWrapper(nn.Module):
         super().__init__()
         self.backbone = backbone
         self.args = args
+        self.backbone.fc = nn.Linear(512, args.num_classes)
 
     def forward(self, l_data, l_labels, u_data):
         """Forward pass for a learning method
