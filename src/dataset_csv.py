@@ -50,7 +50,7 @@ class LabeledImageCSVDataset(VisionDataset):
         if cols > 1:
             # Assuming single-class label at index 1
             label = self.data.iloc[index, 1]
-            label = np.int32(label)
+            label = torch.tensor(label, dtype=torch.long)
 
             # Return as a tuple (image, label) for compatibility
             if self.transforms is not None:

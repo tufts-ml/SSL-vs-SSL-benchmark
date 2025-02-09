@@ -13,6 +13,8 @@ from sklearn.metrics import confusion_matrix as sklearn_cm
 from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import roc_auc_score
 
+from src.utils.train_utils import AverageMeter
+
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +45,7 @@ def eval_model(args, data_loader, raw_model, epoch,
     else:
         raise NameError('not supported yet')
 
-    raw_model.eval()
+    raw_model.backbone.eval()
 
     end_time = time.time()
 
@@ -62,7 +64,10 @@ def eval_model(args, data_loader, raw_model, epoch,
 
             inputs = inputs.to(args.device).float()
             targets = targets.to(args.device).long()
-            raw_outputs = raw_model(inputs)
+            raw_outputs, _, _, _ = raw_model.forward(inputs, targets)
+
+            print('raw_outputs shape: {}, targets shape: {}'.format(
+                raw_outputs.shape, targets.shape), flush=True)
 
             total_targets.append(targets.detach().cpu())
             total_raw_outputs.append(raw_outputs.detach().cpu())
@@ -96,7 +101,9 @@ def calculate_plain_accuracy(output, target):
 
 
 def calculate_balanced_accuracy(output, target):
-    confusion_matrix = sklearn_cm(target, output.argmax(1))
+    print('Inside calculate_balanced_accuracy', flush=True)
+    print('output shape: {}, target shape: {}'.format(output.shape, target.shape), flush=True)
+    confusion_matrix = sklearn_cm(target, output.argmax())
     n_class = confusion_matrix.shape[0]
     print('Inside calculate_balanced_accuracy, {} classes passed in'.format(n_class), flush=True)
 
@@ -165,5 +172,3 @@ def get_mean_and_std(dataset):
     mean.div_(len(dataset))
     std.div_(len(dataset))
     return mean, std
-
-
