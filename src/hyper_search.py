@@ -269,8 +269,11 @@ def train(args, method_config: HyperparamSpace):
         raise ValueError(f"Dataset {args.dataset_name} not found in config.")
 
     # Use hyperparameters sampled from config
+    hyper_strs = []
     for key, value in method_config.rvs().items():
         setattr(args, key, value)
+        hyper_strs.append(f'{key}={value}')
+    model_dir = "_".join(hyper_strs)
 
     precalculated_class_weights = dataset_configs[args.dataset_name]['class_weights']
     weights = torch.Tensor(precalculated_class_weights).to(args.device)
@@ -285,7 +288,7 @@ def train(args, method_config: HyperparamSpace):
 
     os.makedirs(args.train_dir, exist_ok=True)
     # Set directory name based on hyperparameters
-    args.train_dir = os.path.join(args.train_dir, method_config.get_dirname())
+    args.train_dir = os.path.join(args.train_dir, model_dir)
     writer = SummaryWriter(args.train_dir)
 
     # Initialize tracking variables
