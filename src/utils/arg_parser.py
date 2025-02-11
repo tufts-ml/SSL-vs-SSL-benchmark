@@ -1,5 +1,5 @@
 import argparse
-from src.config import dataset_config
+from src.config import dataset_configs
 
 
 def parse_args():
@@ -67,6 +67,6 @@ def parse_args():
     args = parser.parse_args()
 
     # total size of labeled + unlabeled set
-    args.nimg_per_epoch = dataset_config[args.dataset_name]['nimg_per_epoch']
-    args.num_classes = dataset_config[args.dataset_name]['num_classes']
+    args.nimg_per_epoch = dataset_configs[args.dataset_name]['nimg_per_epoch']
+    args.num_classes = dataset_configs[args.dataset_name]['num_classes']
     return args

@@ -1,7 +1,6 @@
-from ray import tune
+from scipy.stats import loguniform
 
-
-dataset_config = {
+dataset_configs = {
     'TissueMNIST': {'dataset_mean': (0.0988, 0.0988, 0.0988),
                     'dataset_std': (0.0785, 0.0785, 0.0785),
                     'image_size': 28,
@@ -41,9 +40,26 @@ dataset_config = {
                  'num_classes': 2},
 }
 
-method_config = {
-    'LabelOnlyBaseline': {
-        "lr": tune.loguniform(1e-5, 1e-2),
-        "wd": tune.loguniform(1e-6, 1e-3),
-    }
+
+class HyperparamSpace():
+    def __init__(self, hyperparam_dist_dict: dict):
+        """Hyperparameter space to sample hyperparameter values from randomly
+
+        Args:
+            hyperparam_dist_dict (dict): maps hyperparameter (str) to sampling distribution
+                                         (scipy.stats class)
+        """
+        self.hyperparam_dist_dict = hyperparam_dist_dict
+
+    def rvs(self, size=1, random_state=None):
+        return {hyperparam: (dist.rvs(size, random_state).item() if size == 1
+                             else dist.rvs(size, random_state))
+                for hyperparam, dist in self.hyperparam_dist_dict.items()}
+
+
+method_configs = {
+    'LabelOnlyBaseline': HyperparamSpace({
+        "lr": loguniform(1e-5, 1e-2),
+        "wd": loguniform(1e-6, 1e-3),
+    })
 }
