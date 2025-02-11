@@ -1,23 +1,18 @@
-from functools import partial
-from pathlib import Path
-import torch
-from ray import tune
-from ray.tune.schedulers import ASHAScheduler
-import ray.cloudpickle as pickle
-import time
 import json
-import os
-from torchvision import transforms
-import torch.optim as optim
-from tqdm import tqdm
 import logging
+import os
+import time
 
+from torchvision import transforms
+import torch
+import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
+from src.config import dataset_configs, method_configs, HyperparamSpace
 from src.utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_schedule_with_warmup,
                                    get_fixed_lr, EarlyStopping)
 from src.utils.apply_clahe import apply_clahe
-from src.config import dataset_config, method_config
-from torch.utils.tensorboard import SummaryWriter
 from src.utils.eval_utils import (
     calculate_auprc,
     calculate_auroc,
@@ -44,9 +39,9 @@ def get_dataloaders(args):
 
     dataset_name = args.dataset_name
 
-    dataset_mean = dataset_config[args.dataset_name]['dataset_mean']
-    dataset_std = dataset_config[args.dataset_name]['dataset_std']
-    image_size = dataset_config[args.dataset_name]['image_size']
+    dataset_mean = dataset_configs[args.dataset_name]['dataset_mean']
+    dataset_std = dataset_configs[args.dataset_name]['dataset_std']
+    image_size = dataset_configs[args.dataset_name]['image_size']
 
     # data transformations for TMED2
     if dataset_name == "TMED2":
@@ -269,15 +264,15 @@ def get_lr_scheduler(optimizer, args):
     return scheduler
 
 
-def train(args, method_config, dataset_config):
-    if args.dataset_name not in dataset_config:
+def train(args, method_config: HyperparamSpace):
+    if args.dataset_name not in dataset_configs:
         raise ValueError(f"Dataset {args.dataset_name} not found in config.")
 
-    # Use Ray Tune's config for hyperparameters
-    for key, value in method_config.items():
+    # Use hyperparameters sampled from config
+    for key, value in method_config.rvs().items():
         setattr(args, key, value)
 
-    precalculated_class_weights = dataset_config[args.dataset_name]['class_weights']
+    precalculated_class_weights = dataset_configs[args.dataset_name]['class_weights']
     weights = torch.Tensor(precalculated_class_weights).to(args.device)
     args.weights = weights
 
@@ -409,9 +404,6 @@ def train(args, method_config, dataset_config):
 
     writer.close()
 
-    # Report to Ray Tune
-    tune.report(val_acc=best_val_acc, test_acc=test_acc)
-
     return best_val_acc, test_acc
 
 
@@ -435,43 +427,17 @@ def test_accuracy(model, device, args):
 
 def main(args):
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    method_config = method_configs[args.method]
 
-    method_config = method_config[args.method]
-    scheduler = ASHAScheduler(
-        metric="val_acc",
-        mode="max",
-        max_t=args.train_epoch,
-        grace_period=1,
-        reduction_factor=2,
-    )
-
-    result = tune.run(
-        partial(train, args=args),
-        config=method_config,
-        num_samples=20,  # TODO adjust
-        scheduler=scheduler,
-        resources_per_trial={"cpu": 2, "gpu": 1},  # TODO adjust
-        local_dir=args.train_dir,
-    )
-
-    # Get the best trial
-    best_trial = result.get_best_trial("val_acc", "max", "last")
-    print(f"Best trial config: {best_trial.config}")
-    print(f"Best trial final validation accuracy: {best_trial.last_result['val_acc']}")
-    print(f"Best trial final test accuracy: {best_trial.last_result['test_acc']}")
-
-    # Load best model and evaluate on the test set
-    best_trained_model = get_model(args).to(args.device)
-
-    best_checkpoint = result.get_best_checkpoint(trial=best_trial, metric="val_acc", mode="max")
-    with best_checkpoint.as_directory() as checkpoint_dir:
-        data_path = Path(checkpoint_dir) / "data.pkl"
-        with open(data_path, "rb") as fp:
-            best_checkpoint_data = pickle.load(fp)
-
-    best_trained_model.load_state_dict(best_checkpoint_data["net_state_dict"])
-    test_acc = test_accuracy(best_trained_model, args.device, args)
-    print(f"Best trial test set accuracy: {test_acc}")
+    # loop until desired duration has elapsed
+    start_time = time.time()
+    best_val_acc = 0
+    while time.time() - start_time <= args.total_hour * 3600:
+        cur_best_val_acc, cur_test_acc = train(args, method_config)
+        if cur_best_val_acc > best_val_acc:
+            best_val_acc = cur_best_val_acc
+            print(f"New Best Model! Val Acc: {best_val_acc}, Test Acc: {cur_test_acc}")
+            # TODO how do we find the new best model later?
 
 
 if __name__ == "__main__":
@@ -482,8 +448,4 @@ if __name__ == "__main__":
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
 
     logger.info(f"Arguments: {vars(args)}")
-
-    # Run training
-    train(args, method_config["LabelOnlyBaseline"], dataset_config)
-
-    # main(args)
+    main(args)
