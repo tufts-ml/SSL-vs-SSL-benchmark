@@ -29,10 +29,7 @@ def eval_model(args, data_loader, raw_model, epoch,
         raw_model (torch.nn.Module): model to evaluate
         epoch (int): current epoch
         evaluation_criterion (str, optional): evaluation criterion. Defaults to 'plain_accuracy'.
-        weights (torch.Tensor, optional): class weights for
-
-    Raises:
-        NameError: _description_
+        weights (torch.Tensor, optional): class weights for loss computation.
 
     Returns:
         tuple: loss, raw_performance, total_targets, total_raw_outputs
@@ -43,14 +40,10 @@ def eval_model(args, data_loader, raw_model, epoch,
     elif evaluation_criterion == 'balanced_accuracy':
         evaluation_method = calculate_balanced_accuracy
     else:
-        raise NameError('not supported yet')
+        raise NameError('Evaluation criterion not supported yet')
 
     raw_model.backbone.eval()
 
-    end_time = time.time()
-
-    batch_time = AverageMeter()
-    data_time = AverageMeter()
     losses = AverageMeter()
 
     data_loader = tqdm(data_loader, disable=False)
@@ -60,86 +53,103 @@ def eval_model(args, data_loader, raw_model, epoch,
         total_raw_outputs = []
 
         for batch_idx, (inputs, targets) in enumerate(data_loader):
-            data_time.update(time.time() - end_time)
-
             inputs = inputs.to(args.device).float()
             targets = targets.to(args.device).long()
-            raw_outputs, _, _, _ = raw_model.forward(inputs, targets)
 
-            print('raw_outputs shape: {}, targets shape: {}'.format(
-                raw_outputs.shape, targets.shape), flush=True)
+            logits, _, _, _ = raw_model.forward(inputs, targets)
 
-            total_targets.append(targets.detach().cpu())
-            total_raw_outputs.append(raw_outputs.detach().cpu())
+            total_targets.append(targets.cpu().numpy())  # Convert to NumPy
+            total_raw_outputs.append(logits.cpu().numpy())
 
-            if weights is not None:
-                loss = func.cross_entropy(raw_outputs, targets, weights)
-            else:
-                loss = func.cross_entropy(raw_outputs, targets)
-
+            loss = func.cross_entropy(
+                    logits, targets, weight=weights
+                ) if weights is not None else func.cross_entropy(logits, targets)
             losses.update(loss.item(), inputs.shape[0])
-            batch_time.update(time.time() - end_time)
-
-            # update end time
-            end_time = time.time()
 
         total_targets = np.concatenate(total_targets, axis=0)
         total_raw_outputs = np.concatenate(total_raw_outputs, axis=0)
 
-        raw_performance = evaluation_method(total_raw_outputs, total_targets)
+        # Convert raw outputs (logits) to class predictions
+        total_predictions = total_raw_outputs.argmax(axis=1)
+
+        raw_performance = evaluation_method(total_predictions, total_targets)
 
         data_loader.close()
 
     return losses.avg, raw_performance, total_targets, total_raw_outputs
 
 
-def calculate_plain_accuracy(output, target):
+def calculate_plain_accuracy(predictions, target):
+    """
+    Compute plain accuracy
+    Args:
+        predictions (np.array): predicted class indices
+        target (np.array): ground truth class indices
+    Returns:
+        float: accuracy percentage
+    """
+    return (predictions == target).mean() * 100
 
-    accuracy = (output.argmax(1) == target).mean()*100
 
-    return accuracy
-
-
-def calculate_balanced_accuracy(output, target):
-    print('Inside calculate_balanced_accuracy', flush=True)
-    print('output shape: {}, target shape: {}'.format(output.shape, target.shape), flush=True)
-    confusion_matrix = sklearn_cm(target, output.argmax())
+def calculate_balanced_accuracy(predictions, target):
+    """
+    Compute balanced accuracy using confusion matrix.
+    Args:
+        predictions (np.array): predicted class indices
+        target (np.array): ground truth class indices
+    Returns:
+        float: balanced accuracy percentage
+    """
+    confusion_matrix = sklearn_cm(target, predictions)
     n_class = confusion_matrix.shape[0]
-    print('Inside calculate_balanced_accuracy, {} classes passed in'.format(n_class), flush=True)
 
     recalls = []
     for i in range(n_class):
-        recall = confusion_matrix[i, i]/np.sum(confusion_matrix[i])
+        recall = confusion_matrix[i, i] / \
+            np.sum(confusion_matrix[i]) if np.sum(confusion_matrix[i]) > 0 else 0
         recalls.append(recall)
-        print('class{} recall: {}'.format(i, recall), flush=True)
 
-    balanced_accuracy = np.mean(np.array(recalls))
+    balanced_accuracy = np.mean(recalls) * 100
 
-    return balanced_accuracy * 100
+    return balanced_accuracy
 
 
 def calculate_auroc(output, target):
-    if output.shape[1] == 1:  # Binary classification with single output (logit)
-        probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
+    """
+    Compute Area Under the Receiver Operating Characteristic Curve (AUROC)
+    Args:
+        output (np.array): logits from model (N, num_classes)
+        target (np.array): ground truth class indices (N,)
+    Returns:
+        float: AUROC score
+    """
+    probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
+
+    if output.shape[1] == 1:  # Binary classification
         auroc_score = roc_auc_score(target, probabilities[:, 1])
     else:  # Multi-class classification
-        probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
         auroc_score = roc_auc_score(target, probabilities, multi_class="ovr")
 
     return auroc_score * 100
 
 
 def calculate_auprc(output, target):
-    if output.shape[1] == 1:  # Binary classification with single output (logit)
-        probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
+    """
+    Compute Area Under the Precision-Recall Curve (AUPRC)
+    Args:
+        output (np.array): logits from model (N, num_classes)
+        target (np.array): ground truth class indices (N,)
+    Returns:
+        float: AUPRC score
+    """
+    probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
+
+    if output.shape[1] == 1:  # Binary classification
         precision, recall, _ = precision_recall_curve(target, probabilities[:, 1])
         auprc_score = auc(recall, precision)
-
     else:  # Multi-class classification
-        probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
         auprc_score = 0
         for class_idx in range(probabilities.shape[1]):
-            # Compute precision-recall curve for each class in a one-vs-rest manner
             class_target = (target == class_idx).astype(int)
             precision, recall, _ = precision_recall_curve(class_target, probabilities[:, class_idx])
             auprc_score += auc(recall, precision)
