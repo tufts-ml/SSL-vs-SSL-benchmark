@@ -39,3 +39,4 @@ torchvision = {index="pytorch_cu121"}
 python_version = "3.10"
 
 [dev-packages]
+torch-tb-profiler = "*"
