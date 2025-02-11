@@ -17,9 +17,9 @@ fi
 
 # Set up environment variables
 export resized_shape=384
-export num_workers=8
+export num_workers=4
 export total_hour=100
-export num_classes=2
+export num_classes=5
 export use_pretrained=""
 export patience=20
 
