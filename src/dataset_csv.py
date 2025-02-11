@@ -105,7 +105,7 @@ class CheXpertDataset(VisionDataset):
                               'Pleural Effusion']
 
     def __len__(self):
-        return self.labels.shape[0]
+        return self.data.shape[0]
 
     def __getitem__(self, index):
         if torch.is_tensor(index):
