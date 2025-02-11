@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=16G
 #SBATCH --time=10:00:00  # Adjust as needed
-#SBATCH --partition=compute
+#SBATCH --partition=preempt
 
 # Load the necessary modules (if required)
 # module load python/3.8.5  # Example
