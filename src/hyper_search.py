@@ -161,16 +161,16 @@ def get_dataloaders(args):
         unlabel_loader = None
 
     if valid_dataset is not None:
-        valid_loader = torch.utils.data.DataLoader(valid_dataset,
-                                                   shuffle=False,
+        valid_loader = torch.utils.data.DataLoader(valid_dataset, 128,
+                                                   shuffle=False, drop_last=False,
                                                    num_workers=args.num_workers,
                                                    pin_memory=True)
     else:
         valid_loader = None
 
     if test_dataset is not None:
-        test_loader = torch.utils.data.DataLoader(test_dataset,
-                                                  shuffle=False,
+        test_loader = torch.utils.data.DataLoader(test_dataset, 128,
+                                                  shuffle=False, drop_last=False,
                                                   num_workers=args.num_workers,
                                                   pin_memory=True)
     else:
@@ -284,6 +284,8 @@ def train(args, method_config: HyperparamSpace):
     train_loader, unlabel_loader, val_loader, test_loader = get_dataloaders(args)
 
     os.makedirs(args.train_dir, exist_ok=True)
+    # Set directory name based on hyperparameters
+    args.train_dir = os.path.join(args.train_dir, method_config.get_dirname())
     writer = SummaryWriter(args.train_dir)
 
     # Initialize tracking variables
@@ -319,9 +321,6 @@ def train(args, method_config: HyperparamSpace):
             l_input = l_input.to(args.device).float()
             l_labels = l_labels.to(args.device).long()
 
-            print("l_input shape: ", l_input.shape)
-            print("l_labels shape: ", l_labels.shape)
-
             # Forward pass
             logits, loss, supervised_loss, unsupervised_loss = model.forward(
                 l_input, l_labels, weights)
@@ -352,16 +351,18 @@ def train(args, method_config: HyperparamSpace):
         scheduler.step()
 
         # Validation
-        val_loss, val_acc, val_labels, val_preds = eval_model(args, val_loader, model, epoch)
+        val_loss, val_acc, val_labels, val_outputs = eval_model(args, val_loader, model, epoch)
 
         is_best = val_acc > best_val_acc
         if is_best:
             best_val_acc = val_acc
 
         # Calculate metrics
-        balanced_acc = calculate_balanced_accuracy(val_labels, val_preds)
-        auroc = calculate_auroc(val_labels, val_preds)
-        auprc = calculate_auprc(val_labels, val_preds)
+        balanced_acc = calculate_balanced_accuracy(val_outputs.argmax(axis=1), val_labels)
+        auroc = calculate_auroc(val_outputs, val_labels)
+        auprc = calculate_auprc(val_outputs, val_labels)
+        
+        print(f"Epoch {epoch}: Val Acc: {val_acc}, Val Loss: {val_loss}")
 
         # Log metrics
         writer.add_scalar('train/loss', labeled_loss.avg, epoch)

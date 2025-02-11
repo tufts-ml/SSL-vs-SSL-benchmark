@@ -55,6 +55,9 @@ class HyperparamSpace():
         return {hyperparam: (dist.rvs(size, random_state).item() if size == 1
                              else dist.rvs(size, random_state))
                 for hyperparam, dist in self.hyperparam_dist_dict.items()}
+        
+    def get_dirname(self):
+        return '_'.join([f'{key}={val}' for key, val in self.hyperparam_dist_dict.items()])
 
 
 method_configs = {
