@@ -14,9 +14,6 @@ from src.utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_sch
                                    get_fixed_lr, EarlyStopping)
 from src.utils.apply_clahe import apply_clahe
 from src.utils.eval_utils import (
-    calculate_auprc,
-    calculate_auroc,
-    calculate_balanced_accuracy,
     calculate_plain_accuracy,
     eval_model,
 )
@@ -377,23 +374,21 @@ def train(args, method_config):
     for epoch in range(args.start_epoch, args.train_epoch):
         train_loss, logits, labels = train_one_epoch(
             args, model, optimizer, scheduler, train_loader, epoch)
-        train_acc = calculate_plain_accuracy(logits.argmax(dim=1), labels)
+        train_pred = logits.cpu().detach().numpy().argmax(axis=1)
+        train_targets = labels.cpu().detach().numpy()
+        train_acc = calculate_plain_accuracy(train_pred, train_targets)
 
         # Validation
-        val_loss, val_acc, val_targets, val_outputs = eval_model(args, val_loader, model, epoch)
-        best_val_acc = max(best_val_acc, val_acc)
-        balanced_acc = calculate_balanced_accuracy(val_outputs.argmax(axis=1), val_targets)
-        auroc = calculate_auroc(val_outputs, val_targets)
-        auprc = calculate_auprc(val_outputs, val_targets)
+        val_metrics = eval_model(args, val_loader, model, args.weights)
 
         # Logging
         writer.add_scalar('train/loss', train_loss, epoch)
         writer.add_scalar('train/accuracy', train_acc, epoch)
-        writer.add_scalar('val/accuracy', val_acc, epoch)
-        writer.add_scalar('val/loss', val_loss, epoch)
-        writer.add_scalar('val/balanced_accuracy', balanced_acc, epoch)
-        writer.add_scalar('val/auroc', auroc, epoch)
-        writer.add_scalar('val/auprc', auprc, epoch)
+        writer.add_scalar('val/accuracy', val_metrics['plain_accuracy'], epoch)
+        writer.add_scalar('val/loss', val_metrics['loss'], epoch)
+        writer.add_scalar('val/balanced_accuracy', val_metrics['balanced_accuracy'], epoch)
+        writer.add_scalar('val/auroc', val_metrics['auroc'], epoch)
+        writer.add_scalar('val/auprc', val_metrics['auprc'], epoch)
 
         save_checkpoint(
             {
@@ -403,34 +398,31 @@ def train(args, method_config):
                 'optimizer': optimizer.state_dict(),
                 'scheduler': scheduler.state_dict()
             },
-            val_acc > best_val_acc,
+            val_metrics['plain_accuracy'] > best_val_acc,
             args.train_dir
         )
 
-        if early_stopping(val_acc):
+        if early_stopping(val_metrics['plain_accuracy']):
             print(f'Early stopping triggered at epoch {epoch}')
             break
 
         total_time += train_loss
 
     # Final Testing
-    test_loss, test_acc, _, _ = eval_model(args, test_loader, model, epoch)
-    test_balanced_acc = calculate_balanced_accuracy(test_acc, test_loss)
-    test_auroc = calculate_auroc(test_acc, test_loss)
-    test_auprc = calculate_auprc(test_acc, test_loss)
+    test_metrics = eval_model(args, test_loader, model, args.weights)
+    test_acc = test_metrics['plain_accuracy']
 
     writer.add_scalar('test/accuracy', test_acc, epoch)
-    writer.add_scalar('test/loss', test_loss, epoch)
-    writer.add_scalar('test/balanced_accuracy', test_balanced_acc, epoch)
-    writer.add_scalar('test/auroc', test_auroc, epoch)
-    writer.add_scalar('test/auprc', test_auprc, epoch)
+    writer.add_scalar('test/balanced_accuracy', test_metrics['balanced_accuracy'], epoch)
+    writer.add_scalar('test/auroc', test_metrics['auroc'], epoch)
+    writer.add_scalar('test/auprc', test_metrics['auprc'], epoch)
 
     with open(os.path.join(args.train_dir, 'training_summary.json'), 'w') as f:
         json.dump({'best_val_accuracy': best_val_acc, 'test_accuracy': test_acc,
-                  'total_epochs': epoch + 1, 'total_time': total_time}, f)
+                   'total_epochs': epoch + 1, 'total_time': total_time}, f)
 
     writer.close()
-    return best_val_acc, test_acc
+    return best_val_acc, test_metrics['plain_accuracy']
 
 
 def main(args):
