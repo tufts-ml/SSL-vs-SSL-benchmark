@@ -1,4 +1,3 @@
-import time
 from tqdm import tqdm
 import torch.nn.functional as func
 
@@ -62,8 +61,8 @@ def eval_model(args, data_loader, raw_model, epoch,
             total_raw_outputs.append(logits.cpu().numpy())
 
             loss = func.cross_entropy(
-                    logits, targets, weight=weights
-                ) if weights is not None else func.cross_entropy(logits, targets)
+                logits, targets, weight=weights
+            ) if weights is not None else func.cross_entropy(logits, targets)
             losses.update(loss.item(), inputs.shape[0])
 
         total_targets = np.concatenate(total_targets, axis=0)
