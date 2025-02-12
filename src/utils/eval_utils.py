@@ -18,64 +18,56 @@ from src.utils.train_utils import AverageMeter
 logger = logging.getLogger(__name__)
 
 
-def eval_model(args, data_loader, raw_model, epoch,
-               evaluation_criterion='plain_accuracy', weights=None):
-    """Evaluate model on validation or test set
+def eval_model(args, data_loader, model, weights=None):
+    """Evaluate the model on the given data_loader.
 
     Args:
-        args (Namespace): parsed arguments
-        data_loader (torch.utils.data.DataLoader): data loader for validation or test set
-        raw_model (torch.nn.Module): model to evaluate
-        epoch (int): current epoch
-        evaluation_criterion (str, optional): evaluation criterion. Defaults to 'plain_accuracy'.
-        weights (torch.Tensor, optional): class weights for loss computation.
+        args (argparse.ArgumentParser): Input arguments
+        data_loader (torch.utils.data.DataLoader): DataLoader for the dataset
+        model (torch.nn.Module): Model to evaluate
+        weights (torch.Tensor): Weights for the loss function
 
     Returns:
-        tuple: loss, raw_performance, total_targets, total_raw_outputs
+        dict: Dictionary containing the evaluation metrics
     """
-
-    if evaluation_criterion == 'plain_accuracy':
-        evaluation_method = calculate_plain_accuracy
-    elif evaluation_criterion == 'balanced_accuracy':
-        evaluation_method = calculate_balanced_accuracy
-    else:
-        raise NameError('Evaluation criterion not supported yet')
-
-    raw_model.backbone.eval()
-
+    model.backbone.eval()
     losses = AverageMeter()
-
     data_loader = tqdm(data_loader, disable=False)
 
     with torch.no_grad():
-        total_targets = []
-        total_raw_outputs = []
+        total_targets, total_outputs = [], []
 
-        for batch_idx, (inputs, targets) in enumerate(data_loader):
-            inputs = inputs.to(args.device).float()
-            targets = targets.to(args.device).long()
+        for inputs, targets in data_loader:
+            inputs, targets = inputs.to(args.device).float(), targets.to(args.device).long()
+            logits, _, _, _ = model.forward(inputs, targets)
 
-            logits, _, _, _ = raw_model.forward(inputs, targets)
-
-            total_targets.append(targets.cpu().numpy())  # Convert to NumPy
-            total_raw_outputs.append(logits.cpu().numpy())
+            total_targets.append(targets.cpu().numpy())
+            total_outputs.append(logits.cpu().numpy())
 
             loss = func.cross_entropy(
-                logits, targets, weight=weights
-            ) if weights is not None else func.cross_entropy(logits, targets)
+                    logits, targets, weight=weights
+                ) if weights is not None else func.cross_entropy(logits, targets)
             losses.update(loss.item(), inputs.shape[0])
 
         total_targets = np.concatenate(total_targets, axis=0)
-        total_raw_outputs = np.concatenate(total_raw_outputs, axis=0)
-
-        # Convert raw outputs (logits) to class predictions
-        total_predictions = total_raw_outputs.argmax(axis=1)
-
-        raw_performance = evaluation_method(total_predictions, total_targets)
+        total_outputs = np.concatenate(total_outputs, axis=0)
 
         data_loader.close()
 
-    return losses.avg, raw_performance, total_targets, total_raw_outputs
+    metrics = evaluate_all_metrics(total_outputs, total_targets)
+    metrics['loss'] = losses.avg
+
+    return metrics
+
+
+def evaluate_all_metrics(outputs, targets):
+    predictions = outputs.argmax(axis=1)
+    return {
+        'plain_accuracy': calculate_plain_accuracy(predictions, targets),
+        'balanced_accuracy': calculate_balanced_accuracy(predictions, targets),
+        'auroc': calculate_auroc(outputs, targets),
+        'auprc': calculate_auprc(outputs, targets),
+    }
 
 
 def calculate_plain_accuracy(predictions, target):
