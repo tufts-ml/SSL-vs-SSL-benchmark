@@ -5,14 +5,10 @@ from tqdm import tqdm
 
 IMAGE_PATH = "/cluster/tufts/hugheslab/datasets/IDRID/Images/"
 train_csv = "/cluster/tufts/hugheslab/datasets/IDRID/Labels/train.csv"
-valid_csv = "/cluster/tufts/hugheslab/datasets/IDRID/Labels/validation.csv"
 
 train_df = pd.read_csv(train_csv)
-valid_df = pd.read_csv(valid_csv)
-
-all_images = pd.concat([train_df, valid_df], ignore_index=True)
-image_paths = all_images['Image name']
-labels = all_images['Retinopathy grade']
+image_paths = train_df['Image name']
+labels = train_df['Retinopathy grade']
 
 pixel_sum = np.zeros(3)
 pixel_squared_sum = np.zeros(3)
