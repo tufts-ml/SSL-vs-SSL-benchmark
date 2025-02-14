@@ -107,7 +107,7 @@ class CheXpertDataset(VisionDataset):
         print("Attributes of CheXpertDataset object:", dir(self))
 
     def __len__(self):
-        return self.label_columns.shape[0]
+        return self.data.shape[0]
 
     def __getitem__(self, index):
         if torch.is_tensor(index):

@@ -14,9 +14,7 @@ from src.utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_sch
                                    get_fixed_lr, EarlyStopping)
 from src.utils.apply_clahe import apply_clahe
 from src.utils.eval_utils import (
-    calculate_auprc,
-    calculate_auroc,
-    calculate_balanced_accuracy,
+    calculate_plain_accuracy,
     eval_model,
 )
 from src.utils.arg_parser import parse_args
@@ -264,166 +262,167 @@ def get_lr_scheduler(optimizer, args):
     return scheduler
 
 
-def train(args, method_config: HyperparamSpace):
+def setup_training(args, method_config: HyperparamSpace):
+    """Set up training environment
+
+    Args:
+        args (Namespace): parsed arguments
+        method_config (HyperparamSpace): hyperparameter space for method
+
+    Raises:
+        ValueError: if dataset not found in config
+
+    Returns:
+        tuple: model, optimizer, scheduler, train_loader, val_loader, test_loader
+    """
     if args.dataset_name not in dataset_configs:
         raise ValueError(f"Dataset {args.dataset_name} not found in config.")
 
-    # Use hyperparameters sampled from config
+    # Set hyperparameters
+    hyper_strs = []
     for key, value in method_config.rvs().items():
         setattr(args, key, value)
+        hyper_strs.append(f'{key}={value}')
 
-    precalculated_class_weights = dataset_configs[args.dataset_name]['class_weights']
-    weights = torch.Tensor(precalculated_class_weights).to(args.device)
-    args.weights = weights
+    model_dir = "_".join(hyper_strs)
+    args.train_dir = os.path.join(args.train_dir, model_dir)
+    os.makedirs(args.train_dir, exist_ok=True)
 
-    model = get_model(args)
-    model = model.to(args.device)
+    # Load class weights
+    args.weights = torch.Tensor(dataset_configs[args.dataset_name]['class_weights']).to(args.device)
 
+    # Initialize model, optimizer, and scheduler
+    model = get_model(args).to(args.device)
     optimizer = get_optimizer(args, model)
     scheduler = get_lr_scheduler(optimizer, args)
-    train_loader, unlabel_loader, val_loader, test_loader = get_dataloaders(args)
+    train_loader, _, val_loader, test_loader = get_dataloaders(args)
 
-    os.makedirs(args.train_dir, exist_ok=True)
-    # Set directory name based on hyperparameters
-    args.train_dir = os.path.join(args.train_dir, method_config.get_dirname())
-    writer = SummaryWriter(args.train_dir)
+    return model, optimizer, scheduler, train_loader, val_loader, test_loader
 
-    # Initialize tracking variables
-    best_val_acc = 0
-    total_time = 0
-    early_stopping = EarlyStopping(patience=args.patience)
+
+def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
+    """Train model for one epoch
+
+    Args:
+        args (Namespace): parsed arguments
+        model (torch.nn.Module): model to train
+        optimizer (torch.optim.Optimizer): optimizer
+        scheduler (torch.optim.lr_scheduler.LambdaLR): learning rate scheduler
+        train_loader (torch.utils.data.DataLoader): training data loader
+        epoch (int): current epoch
+
+    Returns:
+        float: average loss for the epoch
+        torch.Tensor: logits from the model
+        torch.Tensor: labels from the dataset
+    """
+
+    model.train()
+    batch_time, data_time, labeled_loss = AverageMeter(), AverageMeter(), AverageMeter()
+    labeledtrain_iter = iter(train_loader)
+    n_steps_per_epoch = args.nimg_per_epoch // args.labeledtrain_batchsize
+    p_bar = tqdm(range(n_steps_per_epoch), disable=False)
+
     start_time = time.time()
+    for batch_idx in range(n_steps_per_epoch):
+        try:
+            l_input, l_labels = next(labeledtrain_iter)
+        except StopIteration:
+            labeledtrain_iter = iter(train_loader)
+            l_input, l_labels = next(labeledtrain_iter)
 
-    logger.info(f"Starting training for {args.train_epoch} epochs.")
+        data_time.update(time.time() - start_time)
+        l_input, l_labels = l_input.to(args.device).float(), l_labels.to(args.device).long()
 
-    # Iterate over epochs
+        logits, loss, supervised_loss, unsupervised_loss = model.forward(
+            l_input, l_labels, args.weights)
+        total_loss = supervised_loss + (unsupervised_loss if unsupervised_loss is not None else 0)
+        total_loss.backward()
+        optimizer.step()
+        model.zero_grad()
+
+        labeled_loss.update(supervised_loss.item())
+        batch_time.update(time.time() - start_time)
+        start_time = time.time()
+
+        p_bar.set_description(f"Epoch {epoch+1} - Loss: {labeled_loss.avg:.4f}")
+        p_bar.update()
+
+    p_bar.close()
+    scheduler.step()
+    return labeled_loss.avg, logits, l_labels
+
+
+def train(args, method_config):
+    """ Train model
+
+    Args:
+        args (Namespace): parsed arguments
+        method_config (HyperparamSpace): hyperparameter space for method
+
+    Returns:
+        float: best validation accuracy
+        float: test accuracy
+    """
+
+    model, optimizer, scheduler, train_loader, val_loader, test_loader = setup_training(
+        args, method_config)
+    writer = SummaryWriter(args.train_dir)
+    best_val_acc, total_time = 0, 0
+    early_stopping = EarlyStopping(patience=args.patience)
+
     for epoch in range(args.start_epoch, args.train_epoch):
-        model.train()
-
-        # Tracking metrics
-        batch_time = AverageMeter()
-        data_time = AverageMeter()
-        labeled_loss = AverageMeter()
-
-        n_steps_per_epoch = args.nimg_per_epoch // args.labeledtrain_batchsize
-        p_bar = tqdm(range(n_steps_per_epoch), disable=False)
-
-        labeledtrain_iter = iter(train_loader)
-
-        for batch_idx in range(n_steps_per_epoch):
-            try:
-                l_input, l_labels = next(labeledtrain_iter)
-            except StopIteration:
-                labeledtrain_iter = iter(train_loader)
-                l_input, l_labels = next(labeledtrain_iter)
-
-            data_time.update(time.time() - start_time)
-            l_input = l_input.to(args.device).float()
-            l_labels = l_labels.to(args.device).long()
-
-            # Forward pass
-            logits, loss, supervised_loss, unsupervised_loss = model.forward(
-                l_input, l_labels, weights)
-            if unsupervised_loss is not None:
-                total_loss = supervised_loss + unsupervised_loss
-            else:
-                total_loss = supervised_loss
-            total_loss.backward()
-
-            labeled_loss.update(supervised_loss.item())
-
-            optimizer.step()
-            model.zero_grad()
-
-            batch_time.update(time.time() - start_time)
-            start_time = time.time()
-
-            # Update progress bar
-            p_bar.set_description(
-                f"Train Epoch: {epoch+1}/{args.train_epoch}. "
-                f"Iter: {batch_idx+1}/{n_steps_per_epoch}. "
-                f"LR: {scheduler.get_last_lr()[0]:.4f}. Data: {data_time.avg:.3f}s. "
-                f"Batch: {batch_time.avg:.3f}s. Loss: {labeled_loss.avg:.4f}"
-            )
-            p_bar.update()
-
-        p_bar.close()
-        scheduler.step()
+        train_loss, logits, labels = train_one_epoch(
+            args, model, optimizer, scheduler, train_loader, epoch)
+        train_pred = logits.cpu().detach().numpy().argmax(axis=1)
+        train_targets = labels.cpu().detach().numpy()
+        train_acc = calculate_plain_accuracy(train_pred, train_targets)
 
         # Validation
-        val_loss, val_acc, val_labels, val_outputs = eval_model(args, val_loader, model, epoch)
+        val_metrics = eval_model(args, val_loader, model, args.weights)
 
-        is_best = val_acc > best_val_acc
-        if is_best:
-            best_val_acc = val_acc
+        # Logging
+        writer.add_scalar('train/loss', train_loss, epoch)
+        writer.add_scalar('train/accuracy', train_acc, epoch)
+        writer.add_scalar('val/accuracy', val_metrics['plain_accuracy'], epoch)
+        writer.add_scalar('val/loss', val_metrics['loss'], epoch)
+        writer.add_scalar('val/balanced_accuracy', val_metrics['balanced_accuracy'], epoch)
+        writer.add_scalar('val/auroc', val_metrics['auroc'], epoch)
+        writer.add_scalar('val/auprc', val_metrics['auprc'], epoch)
 
-        # Calculate metrics
-        balanced_acc = calculate_balanced_accuracy(val_outputs.argmax(axis=1), val_labels)
-        auroc = calculate_auroc(val_outputs, val_labels)
-        auprc = calculate_auprc(val_outputs, val_labels)
-        
-        print(f"Epoch {epoch}: Val Acc: {val_acc}, Val Loss: {val_loss}")
+        save_checkpoint(
+            {
+                'epoch': epoch + 1,
+                'state_dict': model.state_dict(),
+                'best_val_acc': best_val_acc,
+                'optimizer': optimizer.state_dict(),
+                'scheduler': scheduler.state_dict()
+            },
+            val_metrics['plain_accuracy'] > best_val_acc,
+            args.train_dir
+        )
 
-        # Log metrics
-        writer.add_scalar('train/loss', labeled_loss.avg, epoch)
-        writer.add_scalar('val/accuracy', val_acc, epoch)
-        writer.add_scalar('val/loss', val_loss, epoch)
-        writer.add_scalar('val/balanced_accuracy', balanced_acc, epoch)
-        writer.add_scalar('val/auroc', auroc, epoch)
-        writer.add_scalar('val/auprc', auprc, epoch)
-
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'state_dict': model.state_dict(),
-            'best_val_acc': best_val_acc,
-            'optimizer': optimizer.state_dict(),
-            'scheduler': scheduler.state_dict(),
-        }, is_best, args.train_dir)
-
-        # Early stopping check
-        if early_stopping(val_acc):
-            print(f'Early stopping triggered after epoch {epoch}')
+        if early_stopping(val_metrics['plain_accuracy']):
+            print(f'Early stopping triggered at epoch {epoch}')
             break
 
-        total_time += batch_time.avg
+        total_time += train_loss
 
-    # Final testing
-    test_loss, test_acc, test_labels, test_preds = eval_model(args, test_loader, model, epoch)
+    # Final Testing
+    test_metrics = eval_model(args, test_loader, model, args.weights)
+    test_acc = test_metrics['plain_accuracy']
+
     writer.add_scalar('test/accuracy', test_acc, epoch)
-    writer.add_scalar('test/loss', test_loss, epoch)
-
-    # Save final summary
-    summary = {
-        'best_val_accuracy': best_val_acc,
-        'test_accuracy': test_acc,
-        'total_epochs': epoch + 1,
-        'total_time': total_time
-    }
+    writer.add_scalar('test/balanced_accuracy', test_metrics['balanced_accuracy'], epoch)
+    writer.add_scalar('test/auroc', test_metrics['auroc'], epoch)
+    writer.add_scalar('test/auprc', test_metrics['auprc'], epoch)
 
     with open(os.path.join(args.train_dir, 'training_summary.json'), 'w') as f:
-        json.dump(summary, f)
+        json.dump({'best_val_accuracy': best_val_acc, 'test_accuracy': test_acc,
+                   'total_epochs': epoch + 1, 'total_time': total_time}, f)
 
     writer.close()
-
-    return best_val_acc, test_acc
-
-
-def test_accuracy(model, device, args):
-    model.eval()
-    correct = 0
-    total = 0
-
-    _, _, _, test_loader = get_dataloaders(args)
-
-    with torch.no_grad():
-        for inputs, labels in test_loader:
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = model(inputs)
-            _, predicted = torch.max(outputs, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-
-    return correct / total
+    return best_val_acc, test_metrics['plain_accuracy']
 
 
 def main(args):

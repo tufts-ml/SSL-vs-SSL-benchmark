@@ -17,10 +17,10 @@ fi
 
 # Set up environment variables
 export resized_shape=384
-export num_workers=4
+export num_workers=8
 export total_hour=100
 export num_classes=5
-export use_pretrained=""
+export use_pretrained='False'
 export patience=20
 
 export method='LabelOnlyBaseline'
