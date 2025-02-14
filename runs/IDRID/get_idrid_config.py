@@ -23,11 +23,11 @@ for path, label in tqdm(zip(image_paths, labels), total=len(image_paths)):
     path = IMAGE_PATH + path
     image = Image.open(path).convert('RGB')
     img_array = np.array(image, dtype=np.float32) / 255.0
-    
+
     pixel_sum += img_array.sum(axis=(0, 1))
     pixel_squared_sum += np.square(img_array).sum(axis=(0, 1))
     pixel_count += img_array.shape[0] * img_array.shape[1]
-    
+
     class_counts[label] += 1
 
 dataset_mean = pixel_sum / pixel_count
