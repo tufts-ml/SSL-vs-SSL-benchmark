@@ -127,34 +127,63 @@ def get_dataloaders(args):
         test_file_path = "/cluster/tufts/hugheslab/datasets/CIFAR100/cifar-100-python/test"
 
         train_dataset = CIFAR100Dataset(
-            file_path=train_file_path, transform=transform_labeledtrain, use_coarse_labels=True)
+            file_path=train_file_path, transform=transform_labeledtrain)
         valid_dataset = CIFAR100Dataset(
-            file_path=test_file_path, transform=transform_labeledtrain, use_coarse_labels=True)
+            file_path=test_file_path, transform=transform_labeledtrain)
         test_dataset = CIFAR100Dataset(
-            file_path=test_file_path, transform=transform_labeledtrain, use_coarse_labels=True)
+            file_path=test_file_path, transform=transform_labeledtrain)
     else:
-        train_dataset = dataset_class(csv_file=args.l_train_dataset_path, root_dir=args.root_dataset_path,
-                                      transform=transform_labeledtrain) if args.l_train_dataset_path else None
-        valid_dataset = dataset_class(csv_file=args.val_dataset_path, root_dir=args.root_dataset_path,
-                                      transform=transform_eval) if args.val_dataset_path else None
-        test_dataset = dataset_class(csv_file=args.test_dataset_path, root_dir=args.root_dataset_path,
-                                     transform=transform_eval) if args.test_dataset_path else None
+        train_dataset = dataset_class(
+            csv_file=args.l_train_dataset_path,
+            root_dir=args.root_dataset_path,
+            transform=transform_labeledtrain
+        ) if args.l_train_dataset_path else None
+        valid_dataset = dataset_class(
+            csv_file=args.valid_dataset_path,
+            root_dir=args.root_dataset_path,
+            transform=transform_eval
+        ) if args.valid_dataset_path else None
+        test_dataset = dataset_class(
+            csv_file=args.test_dataset_path,
+            root_dir=args.root_dataset_path,
+            transform=transform_eval
+        ) if args.test_dataset_path else None
 
     # Create DataLoaders
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.labeledtrain_batchsize, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True
+        train_dataset,
+        batch_size=args.labeledtrain_batchsize,
+        shuffle=True,
+        num_workers=args.num_workers,
+        pin_memory=True,
+        drop_last=True
     ) if train_dataset else None
 
     unlabel_loader = torch.utils.data.DataLoader(
-        unlabel_dataset, batch_size=args.unlabeledtrain_batchsize, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True
+        unlabel_dataset, 
+        batch_size=args.unlabeledtrain_batchsize,
+        shuffle=True,
+        num_workers=args.num_workers,
+        pin_memory=True,
+        drop_last=True
     ) if unlabel_dataset else None
 
     valid_loader = torch.utils.data.DataLoader(
-        valid_dataset, batch_size=128, shuffle=False, drop_last=False, num_workers=args.num_workers, pin_memory=True
+        valid_dataset, 
+        batch_size=128,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=True,
+        drop_last=False
     ) if valid_dataset else None
-
+    
     test_loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=128, shuffle=False, drop_last=False, num_workers=args.num_workers, pin_memory=True
+        test_dataset, 
+        batch_size=128,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=True,
+        drop_last=False
     ) if test_dataset else None
 
     return train_loader, unlabel_loader, valid_loader, test_loader

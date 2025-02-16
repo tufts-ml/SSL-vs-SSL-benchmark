@@ -42,9 +42,9 @@ dataset_configs = {
     'CIFAR100': {'dataset_mean': (0.49139968, 0.48215827, 0.44653124),
                  'dataset_std': (0.24703233, 0.24348505, 0.26158768),
                  'image_size': 32,
-                 'class_weights': [0.01] * 20,
+                 'class_weights': [0.01] * 100,
                  'nimg_per_epoch': 50000,
-                 'num_classes': 20
+                 'num_classes': 100
                  },
 }
 
