@@ -3,7 +3,7 @@ import logging
 import os
 import time
 
-from torchvision import transforms,  models
+from torchvision import transforms
 import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
@@ -189,6 +189,7 @@ def get_model(args):
     logger.info(f"Initializing model architecture: {args.arch}")
 
     if args.arch == 'resnet18':
+        from torchvision import models
         model = models.resnet18(pretrained=args.use_pretrained)
 
         # Freeze layers only if using a pretrained model
@@ -389,6 +390,7 @@ def train(args, method_config):
         train_pred = logits.cpu().detach().numpy().argmax(axis=1)
         train_targets = labels.cpu().detach().numpy()
         train_acc = calculate_plain_accuracy(train_pred, train_targets)
+        print(f"Epoch {epoch+1} - Train Accuracy: {train_acc:.4f}")
 
         # Validation
         val_metrics = eval_model(args, val_loader, model, args.weights)
