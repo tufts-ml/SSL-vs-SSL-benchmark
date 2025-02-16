@@ -5,7 +5,8 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=16G
 #SBATCH --time=24:00:00  # Adjust as needed
-#SBATCH --partition=preempt
+#SBATCH --partition=hugheslab
+#SBATCH --gres=gpu:rtx_6000:1
 
 # Load the necessary modules (if required)
 # module load python/3.8.5  # Example
