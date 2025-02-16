@@ -3,7 +3,7 @@ import logging
 import os
 import time
 
-from torchvision import transforms,  models
+from torchvision import transforms
 import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
@@ -20,159 +20,142 @@ from src.utils.eval_utils import (
 from src.utils.arg_parser import parse_args
 from src.methods.LabelOnlyBaseline import LabelOnlyBaseline
 from src.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
+from src.utils.cifar import CIFAR100Dataset
 
 
 # TODO - Move this to a separate file?
 def get_dataloaders(args):
-    """Get DataLoaders
+    """Get DataLoaders.
 
     Args:
         args (Namespace): parsed arguments
 
     Returns:
-        tuple: 4 DataLoaders, which may be none
-               train_loader, unlabel_loader, valid_loader, test_loader
+        tuple: 4 DataLoaders - train_loader, unlabel_loader, valid_loader, test_loader
     """
     logger.info(f"Loading dataset: {args.dataset_name}")
 
     dataset_name = args.dataset_name
+    dataset_config = dataset_configs[dataset_name]
+    dataset_mean, dataset_std, image_size = dataset_config[
+        'dataset_mean'], dataset_config['dataset_std'], dataset_config['image_size']
 
-    dataset_mean = dataset_configs[args.dataset_name]['dataset_mean']
-    dataset_std = dataset_configs[args.dataset_name]['dataset_std']
-    image_size = dataset_configs[args.dataset_name]['image_size']
+    # Define dataset transformations in a dictionary
+    dataset_transforms = {
+        "TMED2": {
+            "train": transforms.Compose([
+                transforms.Grayscale(num_output_channels=3),
+                transforms.Lambda(apply_clahe),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomCrop(size=image_size, padding=int(
+                    image_size * 0.125), padding_mode='reflect'),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=dataset_mean, std=dataset_std)
+            ]),
+            "eval": transforms.Compose([
+                transforms.Grayscale(num_output_channels=3),
+                transforms.Lambda(apply_clahe),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=dataset_mean, std=dataset_std)
+            ])
+        },
+        "CheXpert": {
+            "train": transforms.Compose([
+                transforms.ToPILImage(),
+                transforms.Grayscale(num_output_channels=3),
+                transforms.RandomHorizontalFlip(),
+                transforms.Resize(400),
+                transforms.CenterCrop(320),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=dataset_mean, std=dataset_std)
+            ]),
+            "eval": transforms.Compose([
+                transforms.ToPILImage(),
+                transforms.Grayscale(num_output_channels=3),
+                transforms.RandomHorizontalFlip(),
+                transforms.Resize(400),
+                transforms.CenterCrop(320),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=dataset_mean, std=dataset_std)
+            ])
+        },
+        "IDRID": {
+            "train": transforms.Compose([
+                transforms.Resize(size=image_size),
+                transforms.Lambda(apply_clahe),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomCrop(size=image_size, padding=int(
+                    image_size * 0.125), padding_mode='reflect'),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=dataset_mean, std=dataset_std)
+            ]),
+            "eval": transforms.Compose([
+                transforms.Resize(size=image_size),
+                transforms.Lambda(apply_clahe),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=dataset_mean, std=dataset_std)
+            ])
+        },
+        "CIFAR100": {
+            "train": transforms.Compose([transforms.RandomHorizontalFlip(),
+                                         transforms.RandomCrop(32, padding=4),
+                                         transforms.ToTensor(),
+                                         transforms.Normalize(mean=dataset_mean, std=dataset_std)]),
+            "eval": transforms.Compose([transforms.ToTensor()])
+        }
+    }
 
-    # data transformations for TMED2
-    if dataset_name == "TMED2":
-        transform_labeledtrain = transforms.Compose([
-            transforms.Grayscale(num_output_channels=3),
-            transforms.Lambda(apply_clahe),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(size=image_size,
-                                  padding=int(image_size*0.125),
-                                  padding_mode='reflect'),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
+    if dataset_name not in dataset_transforms:
+        raise NotImplementedError(f"Implement dataloading logic for dataset: {dataset_name}")
 
-        transform_eval = transforms.Compose([
-            transforms.Grayscale(num_output_channels=3),
-            transforms.Lambda(apply_clahe),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
+    transform_labeledtrain = dataset_transforms[dataset_name]["train"]
+    transform_eval = dataset_transforms[dataset_name].get("eval", transform_labeledtrain)
 
-    # data transformations for CheXpert
-    elif dataset_name == "CheXpert":
-        transform_labeledtrain = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Grayscale(num_output_channels=3),
-            transforms.RandomHorizontalFlip(),
-            transforms.Resize(400),
-            transforms.CenterCrop(320),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
+    # Handle unlabeled dataset
+    unlabel_dataset = (
+        UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
+                                 root_dir=args.root_dataset_path, transform=transform_labeledtrain)
+        if args.u_train_dataset_path else None
+    )
 
-        transform_eval = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Grayscale(num_output_channels=3),
-            transforms.RandomHorizontalFlip(),
-            transforms.Resize(400),
-            transforms.CenterCrop(320),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
+    # Assign dataset classes
+    dataset_class = CheXpertDataset if dataset_name == "CheXpert" else LabeledImageCSVDataset
 
-    # data transformations for IDRID
-    elif dataset_name == "IDRID":
-        transform_labeledtrain = transforms.Compose([
-            transforms.Resize(size=image_size),
-            transforms.Lambda(apply_clahe),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(size=image_size,
-                                  padding=int(image_size*0.125),
-                                  padding_mode='reflect'),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
+    # Load labeled datasets
+    if dataset_name == "CIFAR100":
+        train_file_path = "/cluster/tufts/hugheslab/datasets/CIFAR100/cifar-100-python/train"
+        test_file_path = "/cluster/tufts/hugheslab/datasets/CIFAR100/cifar-100-python/test"
 
-        transform_eval = transforms.Compose([
-            transforms.Resize(size=image_size),
-            transforms.Lambda(apply_clahe),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
-
+        train_dataset = CIFAR100Dataset(
+            file_path=train_file_path, transform=transform_labeledtrain, use_coarse_labels=True)
+        valid_dataset = CIFAR100Dataset(
+            file_path=test_file_path, transform=transform_labeledtrain, use_coarse_labels=True)
+        test_dataset = CIFAR100Dataset(
+            file_path=test_file_path, transform=transform_labeledtrain, use_coarse_labels=True)
     else:
-        raise NotImplementedError(f"Implement dataloading logic for the \
-            following dataset: {dataset_name}")
+        train_dataset = dataset_class(csv_file=args.l_train_dataset_path, root_dir=args.root_dataset_path,
+                                      transform=transform_labeledtrain) if args.l_train_dataset_path else None
+        valid_dataset = dataset_class(csv_file=args.val_dataset_path, root_dir=args.root_dataset_path,
+                                      transform=transform_eval) if args.val_dataset_path else None
+        test_dataset = dataset_class(csv_file=args.test_dataset_path, root_dir=args.root_dataset_path,
+                                     transform=transform_eval) if args.test_dataset_path else None
 
-    # Process unlabeled data
-    if args.u_train_dataset_path != '':
-        unlabel_dataset = UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
-                                                   root_dir=args.root_dataset_path,
-                                                   transform=transform_labeledtrain)
-    else:
-        unlabel_dataset = None
+    # Create DataLoaders
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=args.labeledtrain_batchsize, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True
+    ) if train_dataset else None
 
-    # Process labeled data
-    if dataset_name == "CheXpert":
-        dataset_class = CheXpertDataset
-    else:
-        dataset_class = LabeledImageCSVDataset
-    if args.l_train_dataset_path != '':
-        train_dataset = dataset_class(csv_file=args.l_train_dataset_path,
-                                      root_dir=args.root_dataset_path,
-                                      transform=transform_labeledtrain)
-    else:
-        train_dataset = None
+    unlabel_loader = torch.utils.data.DataLoader(
+        unlabel_dataset, batch_size=args.unlabeledtrain_batchsize, shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True
+    ) if unlabel_dataset else None
 
-    if args.val_dataset_path != '':
-        valid_dataset = dataset_class(csv_file=args.val_dataset_path,
-                                      root_dir=args.root_dataset_path,
-                                      transform=transform_eval)
-    else:
-        valid_dataset = None
+    valid_loader = torch.utils.data.DataLoader(
+        valid_dataset, batch_size=128, shuffle=False, drop_last=False, num_workers=args.num_workers, pin_memory=True
+    ) if valid_dataset else None
 
-    if args.test_dataset_path != '':
-        test_dataset = dataset_class(csv_file=args.test_dataset_path,
-                                     root_dir=args.root_dataset_path,
-                                     transform=transform_eval)
-    else:
-        test_dataset = None
-
-    # Create dataloaders
-    train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=args.labeledtrain_batchsize,
-                                               shuffle=True,
-                                               num_workers=args.num_workers,
-                                               pin_memory=True,
-                                               drop_last=True)
-    if unlabel_dataset is not None:
-        unlabel_loader = torch.utils.data.DataLoader(unlabel_dataset,
-                                                     batch_size=args.unlabeledtrain_batchsize,
-                                                     shuffle=True,
-                                                     num_workers=args.num_workers,
-                                                     pin_memory=True,
-                                                     drop_last=True)
-    else:
-        unlabel_loader = None
-
-    if valid_dataset is not None:
-        valid_loader = torch.utils.data.DataLoader(valid_dataset, 128,
-                                                   shuffle=False, drop_last=False,
-                                                   num_workers=args.num_workers,
-                                                   pin_memory=True)
-    else:
-        valid_loader = None
-
-    if test_dataset is not None:
-        test_loader = torch.utils.data.DataLoader(test_dataset, 128,
-                                                  shuffle=False, drop_last=False,
-                                                  num_workers=args.num_workers,
-                                                  pin_memory=True)
-    else:
-        test_loader = None
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset, batch_size=128, shuffle=False, drop_last=False, num_workers=args.num_workers, pin_memory=True
+    ) if test_dataset else None
 
     return train_loader, unlabel_loader, valid_loader, test_loader
 
@@ -189,6 +172,7 @@ def get_model(args):
     logger.info(f"Initializing model architecture: {args.arch}")
 
     if args.arch == 'resnet18':
+        from torchvision import models
         model = models.resnet18(pretrained=args.use_pretrained)
 
         # Freeze layers only if using a pretrained model

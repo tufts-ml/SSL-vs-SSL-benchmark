@@ -27,7 +27,7 @@ export implementation='LabelOnlyBaseline'
 export resume='last_checkpoint.pth.tar'
 
 # Experiment setting
-export dataset_name='IDRID'
+export dataset_name='CIFAR100'
 
 export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/$implementation/pretrained$use_pretrained"
 
@@ -46,7 +46,7 @@ export test_dataset_path='/cluster/tufts/hugheslab/datasets/IDRID/Labels/test.cs
 export root_dataset_path='/cluster/tufts/hugheslab/datasets/IDRID/Images'
 
 # Shared config
-export labeledtrain_batchsize=32
+export labeledtrain_batchsize=128
 
 # PL config, candidate hypers to search
 export optimizer_type='Adam'

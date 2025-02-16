@@ -30,7 +30,7 @@ def eval_model(args, data_loader, model, weights=None):
     Returns:
         dict: Dictionary containing the evaluation metrics
     """
-    model.backbone.eval()
+    model.eval()
     losses = AverageMeter()
     data_loader = tqdm(data_loader, disable=False)
 
