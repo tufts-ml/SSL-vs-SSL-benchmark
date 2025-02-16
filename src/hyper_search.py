@@ -3,7 +3,7 @@ import logging
 import os
 import time
 
-from torchvision import transforms
+from torchvision import transforms,  models
 import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
@@ -189,10 +189,19 @@ def get_model(args):
     logger.info(f"Initializing model architecture: {args.arch}")
 
     if args.arch == 'resnet18':
-        from torchvision import models
-
         model = models.resnet18(pretrained=args.use_pretrained)
+
+        # Freeze layers only if using a pretrained model
+        if args.use_pretrained:
+            for param in model.parameters():
+                param.requires_grad = False
+
+        # Replace the last fully connected layer
         model.fc = torch.nn.Linear(512, args.num_classes)
+
+        # Ensure the new last layer is trainable
+        for param in model.fc.parameters():
+            param.requires_grad = True
 
     elif args.arch == 'wideresnet':
         import backbone.wideresnet as models
