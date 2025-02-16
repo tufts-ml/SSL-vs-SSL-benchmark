@@ -208,7 +208,10 @@ def get_model(args):
         raise NameError('Not implemented yet')
 
     # TODO - Implement other methods, this should dynamically load the method
-    return LabelOnlyBaseline(model, args)
+    if args.implementation == 'LabelOnlyBaseline':
+        return LabelOnlyBaseline(model, args)
+    else:
+        raise NameError('Not implemented yet')
 
 
 def get_optimizer(args, model: torch.nn.Module):
@@ -285,7 +288,7 @@ def setup_training(args, method_config: HyperparamSpace):
         hyper_strs.append(f'{key}={value}')
 
     model_dir = "_".join(hyper_strs)
-    args.train_dir = os.path.join(args.train_dir, model_dir)
+    args.train_dir = os.path.join(args.base_train_dir, model_dir)
     os.makedirs(args.train_dir, exist_ok=True)
 
     # Load class weights
@@ -426,8 +429,7 @@ def train(args, method_config):
 
 
 def main(args):
-    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    method_config = method_configs[args.method]
+    method_config = method_configs[args.implementation]
 
     # loop until desired duration has elapsed
     start_time = time.time()
@@ -446,6 +448,7 @@ if __name__ == "__main__":
 
     args = parse_args()
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
+    args.base_train_dir = args.train_dir
 
     logger.info(f"Arguments: {vars(args)}")
     main(args)

@@ -18,27 +18,25 @@ fi
 # Set up environment variables
 export resized_shape=384
 export num_workers=8
-export total_hour=100
+export total_hour=25
 export num_classes=5
-export use_pretrained='False'
+export use_pretrained='True'
 export patience=20
+export implementation='LabelOnlyBaseline'
 
-export method='LabelOnlyBaseline'
 export resume='last_checkpoint.pth.tar'
 
 # Experiment setting
 export dataset_name='IDRID'
-export data_seed=0
-export training_seed=0
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/data_seed$data_seed/training_seed$training_seed/$implementation/pretrained$use_pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/$implementation/pretrained$use_pretrained"
 
 mkdir -p $train_dir
 
 export script="src.hyper_search"  # Ensure this is set correctly
 
 export arch='resnet18'
-export train_epoch=200 
+export train_epoch=500 
 export start_epoch=0
 
 # Data paths
@@ -48,7 +46,7 @@ export test_dataset_path='/cluster/tufts/hugheslab/datasets/IDRID/Labels/test.cs
 export root_dataset_path='/cluster/tufts/hugheslab/datasets/IDRID/Images'
 
 # Shared config
-export labeledtrain_batchsize=64
+export labeledtrain_batchsize=32
 
 # PL config, candidate hypers to search
 export optimizer_type='Adam'

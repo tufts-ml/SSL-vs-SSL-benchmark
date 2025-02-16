@@ -2,9 +2,9 @@
 #SBATCH --job-name=hyper_search
 #SBATCH --output=experiment_output_%j.log
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=16
 #SBATCH --mem=16G
-#SBATCH --time=10:00:00  # Adjust as needed
+#SBATCH --time=24:00:00  # Adjust as needed
 #SBATCH --partition=preempt
 
 # Load the necessary modules (if required)
@@ -18,7 +18,7 @@ export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
 
 # Running the Python script with parameters
 python -m src.hyper_search \
-    --method $method \
+    --implementation $implementation \
     --dataset_name $dataset_name \
     --l_train_dataset_path $l_train_dataset_path \
     --val_dataset_path $val_dataset_path \
