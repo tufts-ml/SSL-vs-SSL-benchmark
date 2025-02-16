@@ -33,6 +33,8 @@ def eval_model(args, data_loader, model, weights=None):
     model.backbone.eval()
     losses = AverageMeter()
     data_loader = tqdm(data_loader, disable=False)
+    
+    weights = weights.to(args.device) if weights is not None else None
 
     with torch.no_grad():
         total_targets, total_outputs = [], []
@@ -41,16 +43,16 @@ def eval_model(args, data_loader, model, weights=None):
             inputs, targets = inputs.to(args.device).float(), targets.to(args.device).long()
             logits, _, _, _ = model.forward(inputs, targets)
 
-            total_targets.append(targets.cpu().numpy())
-            total_outputs.append(logits.cpu().numpy())
+            total_targets.append(targets)
+            total_outputs.append(logits)
 
             loss = func.cross_entropy(
                     logits, targets, weight=weights
                 ) if weights is not None else func.cross_entropy(logits, targets)
             losses.update(loss.item(), inputs.shape[0])
 
-        total_targets = np.concatenate(total_targets, axis=0)
-        total_outputs = np.concatenate(total_outputs, axis=0)
+        total_targets = torch.cat(total_targets).cpu().numpy()
+        total_outputs = torch.cat(total_outputs).cpu().numpy()
 
         data_loader.close()
 
