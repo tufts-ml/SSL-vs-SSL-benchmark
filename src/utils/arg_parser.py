@@ -5,8 +5,6 @@ from src.config import dataset_configs
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--method', type=str, required=True, help='Method name')
-
     # data settings
     parser.add_argument('--dataset_name', default='TissueMNIST', type=str, help='name of dataset')
     # dataset paths
@@ -21,6 +19,7 @@ def parse_args():
     parser.add_argument('--num_workers', default=12, type=int)
 
     # architecture settings
+    parser.add_argument('--implementation', default='', type=str,)
     parser.add_argument('--arch', default='resnet18', type=str, help='backbone to use')
     # pretrained weights for resnet18
     parser.add_argument('--use_pretrained', default='False', type=str)
