@@ -8,6 +8,7 @@ import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+import torch.nn.init as init
 
 from src.config import dataset_configs, method_configs, HyperparamSpace
 from src.utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_schedule_with_warmup,
@@ -194,11 +195,14 @@ def get_model(args):
 
         # Freeze layers only if using a pretrained model
         if args.use_pretrained:
+            print("Freezing layers")
             for param in model.parameters():
                 param.requires_grad = False
 
         # Replace the last fully connected layer
         model.fc = torch.nn.Linear(512, args.num_classes)
+        init.normal_(model.fc.weight, mean=0.0, std=0.0001)
+        init.zeros_(model.fc.bias)
 
         # Ensure the new last layer is trainable
         for param in model.fc.parameters():
@@ -332,11 +336,16 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
 
     model.train()
     batch_time, data_time, labeled_loss = AverageMeter(), AverageMeter(), AverageMeter()
+
+    all_logits = []
+    all_labels = []
+
     labeledtrain_iter = iter(train_loader)
     n_steps_per_epoch = args.nimg_per_epoch // args.labeledtrain_batchsize
     p_bar = tqdm(range(n_steps_per_epoch), disable=False)
 
     start_time = time.time()
+
     for batch_idx in range(n_steps_per_epoch):
         try:
             l_input, l_labels = next(labeledtrain_iter)
@@ -345,16 +354,27 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
             l_input, l_labels = next(labeledtrain_iter)
 
         data_time.update(time.time() - start_time)
+
         l_input, l_labels = l_input.to(args.device).float(), l_labels.to(args.device).long()
+
+        optimizer.zero_grad()  # Zero gradients before backward pass
 
         logits, loss, supervised_loss, unsupervised_loss = model.forward(
             l_input, l_labels, args.weights)
+
         total_loss = supervised_loss + (unsupervised_loss if unsupervised_loss is not None else 0)
+
+        # Accumulate logits & labels
+        all_logits.append(logits.detach().cpu())
+        all_labels.append(l_labels.detach().cpu())
+
+        # Weighted update for correct loss averaging
+        batch_size = l_labels.size(0)
+        labeled_loss.update(supervised_loss.item(), batch_size)
+
         total_loss.backward()
         optimizer.step()
-        model.zero_grad()
 
-        labeled_loss.update(supervised_loss.item())
         batch_time.update(time.time() - start_time)
         start_time = time.time()
 
@@ -363,7 +383,11 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
 
     p_bar.close()
     scheduler.step()
-    return labeled_loss.avg, logits, l_labels
+
+    all_logits = torch.cat(all_logits) 
+    all_labels = torch.cat(all_labels) 
+
+    return labeled_loss.avg, all_logits, all_labels
 
 
 def train(args, method_config):
@@ -390,12 +414,12 @@ def train(args, method_config):
         train_pred = logits.cpu().detach().numpy().argmax(axis=1)
         train_targets = labels.cpu().detach().numpy()
         train_acc = calculate_plain_accuracy(train_pred, train_targets)
-        print(f"Epoch {epoch+1} - Train Accuracy: {train_acc:.4f}")
 
         # Validation
         val_metrics = eval_model(args, val_loader, model, args.weights)
 
         # Logging
+        print(f"Epoch {epoch+1} - Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, ")
         writer.add_scalar('train/loss', train_loss, epoch)
         writer.add_scalar('train/accuracy', train_acc, epoch)
         writer.add_scalar('val/accuracy', val_metrics['plain_accuracy'], epoch)
@@ -461,5 +485,8 @@ if __name__ == "__main__":
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
     args.base_train_dir = args.train_dir
 
-    logger.info(f"Arguments: {vars(args)}")
+    print(f"Device: {args.device}")
+    print(f"Base Train Dir: {args.base_train_dir}")
+    print(f"Arguments: {vars(args)}")
+
     main(args)
