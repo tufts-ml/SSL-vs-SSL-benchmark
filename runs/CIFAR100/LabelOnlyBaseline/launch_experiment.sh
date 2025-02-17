@@ -27,9 +27,9 @@ export implementation='LabelOnlyBaseline'
 export resume='last_checkpoint.pth.tar'
 
 # Experiment setting
-export dataset_name='IDRID'
+export dataset_name='CIFAR100'
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/$implementation/pretrained$use_pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/higherlr/$implementation/pretrained$use_pretrained"
 
 mkdir -p $train_dir
 
