@@ -67,7 +67,7 @@ class HyperparamSpace():
 
 method_configs = {
     'LabelOnlyBaseline': HyperparamSpace({
-        "lr": loguniform(1e-5, 1e-2),
+        "lr": loguniform(1e-1, 1),
         "wd": loguniform(1e-6, 1e-3),
     })
 }
