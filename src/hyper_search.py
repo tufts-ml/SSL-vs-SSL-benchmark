@@ -240,17 +240,17 @@ def get_optimizer(args, model: torch.nn.Module):
     no_decay = ['bias', 'bn']
     grouped_parameters = [
         {'params': [p for n, p in model.named_parameters() if not any(
-            nd in n for nd in no_decay)], 'weight_decay': 0.01},
+            nd in n for nd in no_decay)], 'weight_decay': args.wd},
         {'params': [p for n, p in model.named_parameters() if any(
-            nd in n for nd in no_decay)], 'weight_decay': 0.0}
+            nd in n for nd in no_decay)], 'weight_decay': args.wd}
     ]
 
     if args.optimizer_type == 'SGD':
-        optimizer = optim.SGD(grouped_parameters, lr=0.1,
+        optimizer = optim.SGD(grouped_parameters, lr=args.lr,
                               momentum=0.9, nesterov=args.nesterov)
 
     elif args.optimizer_type == 'Adam':
-        optimizer = optim.Adam(grouped_parameters, lr=0.1)
+        optimizer = optim.Adam(grouped_parameters, lr=args.lr)
 
     else:
         raise NameError('Not supported optimizer setting')
@@ -335,6 +335,9 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
     """
 
     model.train()
+    args.writer.add_scalar('train/lr', scheduler.get_last_lr()[0], epoch)
+    print(f"Epoch {epoch+1} - Learning Rate: {scheduler.get_last_lr()[0]}")
+    
     batch_time, data_time, labeled_loss = AverageMeter(), AverageMeter(), AverageMeter()
 
     all_logits = []
@@ -405,6 +408,7 @@ def train(args, method_config):
     model, optimizer, scheduler, train_loader, val_loader, test_loader = setup_training(
         args, method_config)
     writer = SummaryWriter(args.train_dir)
+    args.writer = writer
     best_val_acc, total_time = 0, 0
     early_stopping = EarlyStopping(patience=args.patience)
 
