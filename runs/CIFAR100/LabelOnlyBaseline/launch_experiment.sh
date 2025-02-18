@@ -16,8 +16,8 @@ else
 fi
 
 # Set up environment variables
-export resized_shape=384
-export num_workers=8
+export resized_shape=32
+export num_workers=16
 export total_hour=25
 export num_classes=5
 export use_pretrained='True'
@@ -29,14 +29,14 @@ export resume='last_checkpoint.pth.tar'
 # Experiment setting
 export dataset_name='CIFAR100'
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/higherlr/$implementation/pretrained$use_pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/fft/$implementation/pretrained$use_pretrained"
 
 mkdir -p $train_dir
 
 export script="src.hyper_search"  # Ensure this is set correctly
 
 export arch='resnet18'
-export train_epoch=200 
+export train_epoch=500 
 export start_epoch=0
 
 # Data paths
