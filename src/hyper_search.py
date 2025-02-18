@@ -4,6 +4,7 @@ import os
 import time
 
 from torchvision import transforms
+from torchvision.models import resnet18, ResNet18_Weights
 import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
@@ -108,6 +109,11 @@ def get_dataloaders(args):
         raise NotImplementedError(f"Implement dataloading logic for the \
             following dataset: {dataset_name}")
 
+    if args.use_pretrained:
+        pretrained_transforms = ResNet18_Weights.IMAGENET1K_V1.transforms()
+        transform_labeledtrain = transform_labeledtrain + pretrained_transforms
+        transform_eval = transform_eval + pretrained_transforms
+
     # Process unlabeled data
     if args.u_train_dataset_path != '':
         unlabel_dataset = UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
@@ -190,11 +196,11 @@ def get_model(args):
     logger.info(f"Initializing model architecture: {args.arch}")
 
     if args.arch == 'resnet18':
-        from torchvision import models
-        model = models.resnet18(pretrained=args.use_pretrained)
+        weights = ResNet18_Weights.DEFAULT if args.use_pretrained else None
+        model = resnet18(weights=weights)
 
         # Freeze layers only if using a pretrained model
-        if args.use_pretrained:
+        if args.use_pretrained and args.freeze_backbone:
             print("Freezing layers")
             for param in model.parameters():
                 param.requires_grad = False
@@ -337,7 +343,7 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
     model.train()
     args.writer.add_scalar('train/lr', scheduler.get_last_lr()[0], epoch)
     print(f"Epoch {epoch+1} - Learning Rate: {scheduler.get_last_lr()[0]}")
-    
+
     batch_time, data_time, labeled_loss = AverageMeter(), AverageMeter(), AverageMeter()
 
     all_logits = []
@@ -387,8 +393,8 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
     p_bar.close()
     scheduler.step()
 
-    all_logits = torch.cat(all_logits) 
-    all_labels = torch.cat(all_labels) 
+    all_logits = torch.cat(all_logits)
+    all_labels = torch.cat(all_labels)
 
     return labeled_loss.avg, all_logits, all_labels
 
