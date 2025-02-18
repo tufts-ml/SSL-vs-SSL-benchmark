@@ -254,7 +254,7 @@ def get_optimizer(args, model: torch.nn.Module):
         {'params': [p for n, p in model.named_parameters() if not any(
             nd in n for nd in no_decay)], 'weight_decay': args.wd},
         {'params': [p for n, p in model.named_parameters() if any(
-            nd in n for nd in no_decay)], 'weight_decay': 0.0}
+            nd in n for nd in no_decay)], 'weight_decay': args.wd}
     ]
 
     if args.optimizer_type == 'SGD':
