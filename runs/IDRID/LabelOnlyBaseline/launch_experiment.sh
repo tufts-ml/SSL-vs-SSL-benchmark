@@ -20,8 +20,9 @@ export resized_shape=384
 export num_workers=16
 export total_hour=5
 export num_classes=5
-export use_pretrained='False'
-export patience=10
+export use_pretrained='True'
+export freeze_backbone='True'
+export patience=20
 export implementation='LabelOnlyBaseline'
 
 export resume='last_checkpoint.pth.tar'
@@ -29,7 +30,7 @@ export resume='last_checkpoint.pth.tar'
 # Experiment setting
 export dataset_name='IDRID'
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/longruns/$dataset_name/$implementation/pretrained$use_pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/test2/$implementation/pretrained$use_pretrained"
 
 mkdir -p $train_dir
 
