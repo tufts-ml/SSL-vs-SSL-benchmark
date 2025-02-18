@@ -7,6 +7,13 @@ class LabelOnlyBaseline(MethodWrapper):
         # Forward pass
         logits = self.backbone(l_data)
 
-        s_loss = func.cross_entropy(logits, l_labels, weight=self.args.weights, reduction='mean')
+        if self.args.dataset_name == "CheXpert":
+            s_loss = func.binary_cross_entropy_with_logits(
+                logits, l_labels.float(), weight=self.args.weights, reduction='mean')
+        else:
+            s_loss = func.cross_entropy(
+                logits, l_labels, weight=self.args.weights, reduction='mean')
+
+        # s_loss = func.cross_entropy(logits, l_labels, weight=self.args.weights, reduction='mean')
 
         return logits, s_loss, s_loss, 0  # No unsupervised loss

@@ -62,9 +62,9 @@ def get_dataloaders(args):
         ])
 
     # data transformations for CheXpert
-    elif dataset_name == "CheXpert":
+    elif dataset_name == "CheXpert2":
         transform_labeledtrain = transforms.Compose([
-            transforms.ToPILImage(),
+            # transforms.ToPILImage(),
             transforms.Grayscale(num_output_channels=3),
             transforms.RandomHorizontalFlip(),
             transforms.Resize(400),
@@ -74,7 +74,7 @@ def get_dataloaders(args):
         ])
 
         transform_eval = transforms.Compose([
-            transforms.ToPILImage(),
+            # transforms.ToPILImage(),
             transforms.Grayscale(num_output_channels=3),
             transforms.RandomHorizontalFlip(),
             transforms.Resize(400),
