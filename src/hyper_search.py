@@ -111,8 +111,8 @@ def get_dataloaders(args):
 
     if args.use_pretrained:
         pretrained_transforms = ResNet18_Weights.IMAGENET1K_V1.transforms()
-        transform_labeledtrain = transform_labeledtrain + pretrained_transforms
-        transform_eval = transform_eval + pretrained_transforms
+        transform_labeledtrain = pretrained_transforms
+        transform_eval = pretrained_transforms
 
     # Process unlabeled data
     if args.u_train_dataset_path != '':
