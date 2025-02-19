@@ -17,10 +17,10 @@ fi
 
 # Set up environment variables
 export resized_shape=32
-export num_workers=16
+export num_workers=8
 export total_hour=25
 export num_classes=5
-export use_pretrained='True'
+
 export patience=20
 export implementation='LabelOnlyBaseline'
 
@@ -29,7 +29,7 @@ export resume='last_checkpoint.pth.tar'
 # Experiment setting
 export dataset_name='CIFAR100'
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/fft/$implementation/pretrained$use_pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/preprocessed/$implementation/pretrained$use_pretrained"
 
 mkdir -p $train_dir
 
@@ -56,7 +56,7 @@ export lr_cycle_epochs=$train_epoch
 
 if [[ $ACTION_NAME == 'submit' ]]; then
     ## Use this line to submit the experiment to the batch scheduler
-    sbatch ./do_experiment.slurm  # Fixed from `< ./do_experiment.slurm`
+    sbatch --export=ALL ./do_experiment.slurm  
     
 elif [[ $ACTION_NAME == 'run_here' ]]; then
     ## Use this line to run the script interactively

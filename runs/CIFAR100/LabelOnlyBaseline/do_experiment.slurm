@@ -28,7 +28,8 @@ python -m src.hyper_search \
     --labeledtrain_batchsize $labeledtrain_batchsize \
     --num_workers $num_workers \
     --arch $arch \
-    --use_pretrained $use_pretrained \
+    $( [[ "$use_pretrained" == "true" ]] && echo "--use_pretrained" ) \
+    $( [[ "$freeze_backbone" == "true" ]] && echo "--freeze_backbone" ) \
     --train_epoch $train_epoch \
     --start_epoch $start_epoch \
     --total_hour $total_hour \
