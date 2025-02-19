@@ -114,9 +114,10 @@ def get_dataloaders(args):
     transform_eval = dataset_transforms[dataset_name]["eval"]
 
     if args.use_pretrained:
+        print("Using pretrained model")
         pretrained_transforms = ResNet18_Weights.IMAGENET1K_V1.transforms()
-        transform_labeledtrain = transform_labeledtrain + pretrained_transforms
-        transform_eval = transform_eval + pretrained_transforms
+        transform_labeledtrain = pretrained_transforms
+        transform_eval = pretrained_transforms
 
     # Handle unlabeled dataset
     unlabel_dataset = (
@@ -146,10 +147,10 @@ def get_dataloaders(args):
             transform=transform_labeledtrain
         ) if args.l_train_dataset_path else None
         valid_dataset = dataset_class(
-            csv_file=args.valid_dataset_path,
+            csv_file=args.val_dataset_path,
             root_dir=args.root_dataset_path,
             transform=transform_eval
-        ) if args.valid_dataset_path else None
+        ) if args.val_dataset_path else None
         test_dataset = dataset_class(
             csv_file=args.test_dataset_path,
             root_dir=args.root_dataset_path,
@@ -238,6 +239,10 @@ def get_model(args):
 
     else:
         raise NameError('Not implemented yet')
+    
+    # Print the number of trainable parameters
+    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Number of trainable parameters: {num_params}")
 
     # TODO - Implement other methods, this should dynamically load the method
     if args.implementation == 'LabelOnlyBaseline':

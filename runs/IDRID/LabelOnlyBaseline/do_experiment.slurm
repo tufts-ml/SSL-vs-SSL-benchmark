@@ -28,7 +28,7 @@ python -m src.hyper_search \
     --labeledtrain_batchsize $labeledtrain_batchsize \
     --num_workers $num_workers \
     --arch $arch \
-    --use_pretrained $use_pretrained \
+    --use_pretrained \
     --train_epoch $train_epoch \
     --start_epoch $start_epoch \
     --total_hour $total_hour \

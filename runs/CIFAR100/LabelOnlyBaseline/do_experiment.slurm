@@ -2,7 +2,7 @@
 #SBATCH --job-name=hyper_search
 #SBATCH --output=experiment_output_%j.log
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=8
 #SBATCH --mem=16G
 #SBATCH --time=24:00:00  # Adjust as needed
 #SBATCH --partition=hugheslab
@@ -28,8 +28,8 @@ python -m src.hyper_search \
     --labeledtrain_batchsize $labeledtrain_batchsize \
     --num_workers $num_workers \
     --arch $arch \
-    $( [[ "$use_pretrained" == "true" ]] && echo "--use_pretrained" ) \
-    $( [[ "$freeze_backbone" == "true" ]] && echo "--freeze_backbone" ) \
+    --use_pretrained $use_pretrained \
+    --freeze_backbone $freeze_backbone \
     --train_epoch $train_epoch \
     --start_epoch $start_epoch \
     --total_hour $total_hour \

@@ -20,8 +20,6 @@ export resized_shape=384
 export num_workers=16
 export total_hour=5
 export num_classes=5
-export use_pretrained='True'
-export freeze_backbone='True'
 export patience=20
 export implementation='LabelOnlyBaseline'
 
@@ -30,14 +28,14 @@ export resume='last_checkpoint.pth.tar'
 # Experiment setting
 export dataset_name='IDRID'
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/test2/$implementation/pretrained$use_pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/$implementation/fft_preproc"
 
 mkdir -p $train_dir
 
 export script="src.hyper_search"  # Ensure this is set correctly
 
 export arch='resnet18'
-export train_epoch=500 
+export train_epoch=200 
 export start_epoch=0
 
 # Data paths
