@@ -21,9 +21,8 @@ def parse_args():
     # architecture settings
     parser.add_argument('--implementation', default='', type=str,)
     parser.add_argument('--arch', default='resnet18', type=str, help='backbone to use')
-    # pretrained weights for resnet18
-    parser.add_argument('--use_pretrained', action="store_true")
-    parser.add_argument('--freeze_backbone', action="store_true")
+    parser.add_argument('--use_pretrained', action="store_true", help='use pretrained weights')
+    parser.add_argument('--freeze_backbone', action="store_true", help='freeze backbone')
 
     # training process settings
     parser.add_argument('--train_epoch', default=300, type=int, help='total epochs to run')
