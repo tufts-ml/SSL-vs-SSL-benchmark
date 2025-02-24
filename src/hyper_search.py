@@ -110,9 +110,16 @@ def get_dataloaders(args):
             following dataset: {dataset_name}")
 
     if args.use_pretrained:
+        print("Using pretrained model and transforms")
         pretrained_transforms = ResNet18_Weights.IMAGENET1K_V1.transforms()
-        transform_labeledtrain = pretrained_transforms
-        transform_eval = pretrained_transforms
+        transform_labeledtrain = transforms.Compose([
+            transforms.Grayscale(num_output_channels=3),
+            pretrained_transforms,
+        ])
+        transform_eval = transforms.Compose([
+            transforms.Grayscale(num_output_channels=3),
+            pretrained_transforms,
+        ])
 
     # Process unlabeled data
     if args.u_train_dataset_path != '':

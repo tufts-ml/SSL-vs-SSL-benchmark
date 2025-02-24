@@ -3,8 +3,8 @@
 #SBATCH --output=experiment_output_%j.log
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=16G
-#SBATCH --time=24:00:00  # Adjust as needed
+#SBATCH --mem-per-cpu=2G
+#SBATCH --time=50:00:00  # Adjust as needed
 #SBATCH --partition=hugheslab
 #SBATCH --gres=gpu:rtx_6000:1
 
@@ -18,7 +18,7 @@ source /cluster/home/ljain01/.local/share/virtualenvs/SSL-vs-SSL-benchmark-za0Nt
 export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
 
 # Running the Python script with parameters
-python -m src.hyper_search \
+python -m $script \
     --implementation $implementation \
     --dataset_name $dataset_name \
     --l_train_dataset_path $l_train_dataset_path \
