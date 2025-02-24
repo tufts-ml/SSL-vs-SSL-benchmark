@@ -14,7 +14,7 @@ else
     ACTION_NAME=$1
 fi
 
-export num_workers=8
+export num_workers=4
 export total_hour=1
 export patience=20
 
