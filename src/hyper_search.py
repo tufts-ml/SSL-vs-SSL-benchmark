@@ -47,16 +47,16 @@ def get_dataloaders(args):
         "TMED2": {
             "train": transforms.Compose([
                 transforms.Grayscale(num_output_channels=3),
-                transforms.Lambda(apply_clahe),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomCrop(size=image_size, padding=int(
-                    image_size * 0.125), padding_mode='reflect'),
+                # transforms.Lambda(apply_clahe),
+                # transforms.RandomHorizontalFlip(),
+                # transforms.RandomCrop(size=image_size, padding=int(
+                #     image_size * 0.125), padding_mode='reflect'),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=dataset_mean, std=dataset_std)
             ]),
             "eval": transforms.Compose([
                 transforms.Grayscale(num_output_channels=3),
-                transforms.Lambda(apply_clahe),
+                # transforms.Lambda(apply_clahe),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=dataset_mean, std=dataset_std)
             ])
