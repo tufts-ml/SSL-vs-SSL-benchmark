@@ -1,26 +1,40 @@
-#!/usr/bin/env bash
+#!/bin/bash
+#SBATCH --job-name=hyper_search
+#SBATCH --output=experiment_output_%j.log
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=16G
+#SBATCH --time=24:00:00  # Adjust as needed
+#SBATCH --partition=hugheslab
+#SBATCH --gres=gpu:rtx_6000:1
 
-# Pass along all ENV variables as arguments to my Python script
+# Load the necessary modules (if required)
+# module load python/3.8.5  # Example
+
+# Activate the virtual environment
+source /cluster/home/ljain01/.local/share/virtualenvs/SSL-vs-SSL-benchmark-za0Nt4Ck/bin/activate
+
+# Export environment variables
 export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
-python -m $script \
-    --num_workers $num_workers\
-    --total_hour $total_hour\
-    --use_pretrained $use_pretrained\
-    --patience $patience\
-    --dataset_name $dataset_name\
-    --data_seed $data_seed\
-    --training_seed $training_seed\
-    --arch $arch\
-    --train_epoch $train_epoch\
-    --start_epoch $start_epoch\
-    --resume $resume\
-    --train_dir $train_dir\
-    --l_train_dataset_path $l_train_dataset_path\
-    --val_dataset_path $val_dataset_path\
-    --test_dataset_path $test_dataset_path\
-    --labeledtrain_batchsize $labeledtrain_batchsize\
-    --lr_warmup_epochs $lr_warmup_epochs\
-    --optimizer_type $optimizer_type\
-    --lr_schedule_type $lr_schedule_type\
-    --lr_cycle_epochs $lr_cycle_epochs\
-    
+
+# Running the Python script with parameters
+python -m src.hyper_search \
+    --implementation $implementation \
+    --dataset_name $dataset_name \
+    --l_train_dataset_path $l_train_dataset_path \
+    --val_dataset_path $val_dataset_path \
+    --test_dataset_path $test_dataset_path \
+    --root_dataset_path $root_dataset_path \
+    --labeledtrain_batchsize $labeledtrain_batchsize \
+    --num_workers $num_workers \
+    --arch $arch \
+    --train_epoch $train_epoch \
+    --start_epoch $start_epoch \
+    --freeze_backbone \
+    --use_pretrained \
+    --total_hour $total_hour \
+    --train_dir $train_dir \
+    --lr_warmup_epochs $lr_warmup_epochs \
+    --optimizer_type $optimizer_type \
+    --lr_schedule_type $lr_schedule_type \
+    --lr_cycle_epochs $lr_cycle_epochs
