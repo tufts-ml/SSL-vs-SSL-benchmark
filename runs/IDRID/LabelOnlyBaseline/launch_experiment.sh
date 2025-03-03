@@ -30,14 +30,14 @@ export resume='last_checkpoint.pth.tar'
 # Experiment setting
 export dataset_name='IDRID'
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/preprocessed/$implementation/pretrained$use_pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/$implementation/earlystoppingtest"
 
 mkdir -p $train_dir
 
 export script="src.hyper_search"  # Ensure this is set correctly
 
 export arch='resnet18'
-export train_epoch=500 
+export train_epoch=200 
 export start_epoch=0
 
 # Data paths
