@@ -15,9 +15,6 @@ from sklearn.metrics import roc_auc_score
 from src.utils.train_utils import AverageMeter
 
 
-logger = logging.getLogger(__name__)
-
-
 def eval_model(args, data_loader, model, weights=None):
     """Evaluate the model on the given data_loader.
 
@@ -33,7 +30,7 @@ def eval_model(args, data_loader, model, weights=None):
     model.backbone.eval()
     losses = AverageMeter()
     data_loader = tqdm(data_loader, disable=False)
-    
+
     weights = weights.to(args.device) if weights is not None else None
 
     with torch.no_grad():
@@ -47,8 +44,8 @@ def eval_model(args, data_loader, model, weights=None):
             total_outputs.append(logits)
 
             loss = func.cross_entropy(
-                    logits, targets, weight=weights
-                ) if weights is not None else func.cross_entropy(logits, targets)
+                logits, targets, weight=weights
+            ) if weights is not None else func.cross_entropy(logits, targets)
             losses.update(loss.item(), inputs.shape[0])
 
         total_targets = torch.cat(total_targets).cpu().numpy()
@@ -167,6 +164,7 @@ def get_mean_and_std(dataset):
 
     mean = torch.zeros(3)
     std = torch.zeros(3)
+    logger = logging.getLogger(__name__)
     logger.info('==> Computing mean and std..')
     for inputs, targets in dataloader:
         for i in range(3):
