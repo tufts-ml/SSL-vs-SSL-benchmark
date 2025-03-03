@@ -21,7 +21,19 @@ from src.utils.eval_utils import (
 )
 from src.utils.arg_parser import parse_args
 from src.methods.LabelOnlyBaseline import LabelOnlyBaseline
+from src.methods.MixUp import MixUp
 from src.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
+
+
+class TransformTwice:
+    def __init__(self, transform_fn):
+        self.transform_fn = transform_fn
+
+    def __call__(self, x):
+        out1 = self.transform_fn(x)
+        out2 = self.transform_fn(x)
+
+        return out1, out2
 
 
 # TODO - Move this to a separate file?
@@ -120,6 +132,9 @@ def get_dataloaders(args):
             transforms.Grayscale(num_output_channels=3),
             pretrained_transforms,
         ])
+
+    if args.implementation == 'MixUp':
+        transform_labeledtrain = TransformTwice(transform_labeledtrain)
 
     # Process unlabeled data
     if args.u_train_dataset_path != '':
@@ -237,6 +252,8 @@ def get_model(args):
     # TODO - Implement other methods, this should dynamically load the method
     if args.implementation == 'LabelOnlyBaseline':
         return LabelOnlyBaseline(model, args)
+    elif args.implementation == 'MixUp':
+        return MixUp(model, args)
     else:
         raise NameError('Not implemented yet')
 
@@ -371,7 +388,7 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
 
         data_time.update(time.time() - start_time)
 
-        l_input, l_labels = l_input.to(args.device).float(), l_labels.to(args.device).long()
+        # l_input, l_labels = l_input.to(args.device).float(), l_labels.to(args.device).long()
 
         optimizer.zero_grad()  # Zero gradients before backward pass
 

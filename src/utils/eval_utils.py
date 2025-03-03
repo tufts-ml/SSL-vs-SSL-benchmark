@@ -41,7 +41,7 @@ def eval_model(args, data_loader, model, weights=None):
 
         for inputs, targets in data_loader:
             inputs, targets = inputs.to(args.device).float(), targets.to(args.device).long()
-            logits, _, _, _ = model.forward(inputs, targets)
+            logits, _, _, _ = model.eval(inputs, targets)
 
             total_targets.append(targets)
             total_outputs.append(logits)
