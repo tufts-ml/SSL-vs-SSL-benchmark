@@ -27,6 +27,7 @@ def eval_model(args, data_loader, model, weights=None):
     Returns:
         dict: Dictionary containing the evaluation metrics
     """
+    # TODO fact check this, but I believe model.eval() will propogate to the submodules
     model.backbone.eval()
     losses = AverageMeter()
     data_loader = tqdm(data_loader, disable=False)
@@ -38,11 +39,16 @@ def eval_model(args, data_loader, model, weights=None):
 
         for inputs, targets in data_loader:
             inputs, targets = inputs.to(args.device).float(), targets.to(args.device).long()
+            # TODO this is written like a variant of the forward function, but the naming overlaps
+            # with a common PyTorch function. Add 'eval_forward' to the method wrapper?
             logits, _, _, _ = model.eval(inputs, targets)
 
             total_targets.append(targets)
+            # TODO probabilities of each class from the method wrapper will generalize better
+            # than logits
             total_outputs.append(logits)
 
+            # TODO losses should be handled by the method wrapper
             loss = func.cross_entropy(
                 logits, targets, weight=weights
             ) if weights is not None else func.cross_entropy(logits, targets)
@@ -115,6 +121,8 @@ def calculate_auroc(output, target):
     """
     probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
 
+    # TODO is this actually used when num_classes=2? Do we have code to strip 1 class? If not,
+    # can delete the following two lines
     if output.shape[1] == 1:  # Binary classification
         auroc_score = roc_auc_score(target, probabilities[:, 1])
     else:  # Multi-class classification
@@ -134,6 +142,8 @@ def calculate_auprc(output, target):
     """
     probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
 
+    # TODO similar to AUROC, do we need separate logic here?
+    # TODO use sklearn.metrics.average_precision_score
     if output.shape[1] == 1:  # Binary classification
         precision, recall, _ = precision_recall_curve(target, probabilities[:, 1])
         auprc_score = auc(recall, precision)
@@ -167,9 +177,11 @@ def get_mean_and_std(dataset):
     logger = logging.getLogger(__name__)
     logger.info('==> Computing mean and std..')
     for inputs, targets in dataloader:
+        # TODO use dim param of functions to eliminate this loop
         for i in range(3):
             mean[i] += inputs[:, i, :, :].mean()
             std[i] += inputs[:, i, :, :].std()
+    # TODO why might these values be closer to 0 than expected?
     mean.div_(len(dataset))
     std.div_(len(dataset))
     return mean, std
