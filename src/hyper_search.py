@@ -418,14 +418,18 @@ def train(args, method_config):
         float: test accuracy
     """
 
+    start_time = time.time()
+
     model, optimizer, scheduler, train_loader, val_loader, test_loader = setup_training(
         args, method_config)
     writer = SummaryWriter(args.train_dir)
     args.writer = writer
     best_val_acc, total_time = 0, 0
-    early_stopping = EarlyStopping(patience=args.patience)
+    current_count = 0  # for early stopping, when continue training
+    early_stopping = EarlyStopping(patience=args.patience, initial_count=current_count)
 
     for epoch in range(args.start_epoch, args.train_epoch):
+        start_time = time.time()
         train_loss, logits, labels = train_one_epoch(
             args, model, optimizer, scheduler, train_loader, epoch)
         train_pred = logits.cpu().detach().numpy().argmax(axis=1)
@@ -434,6 +438,11 @@ def train(args, method_config):
 
         # Validation
         val_metrics = eval_model(args, val_loader, model, args.weights)
+
+        if val_metrics['plain_accuracy'] > best_val_acc:
+            best_val_acc = val_metrics['plain_accuracy']
+
+        early_stopping(val_metrics['plain_accuracy'])
 
         # Logging
         print(f"Epoch {epoch+1} - Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, ")
@@ -457,11 +466,18 @@ def train(args, method_config):
             args.train_dir
         )
 
-        if early_stopping(val_metrics['plain_accuracy']):
-            print(f'Early stopping triggered at epoch {epoch}')
+        total_time += time.time() - start_time
+
+        print(f"Validation Accuracy: {val_metrics['plain_accuracy']:.4f}")
+        print(f"Early Stopping Count: {early_stopping.counter}")
+
+        if early_stopping.early_stop:
+            print("Early stopping")
             break
 
-        total_time += train_loss
+        if total_time >= args.total_hour * 3600:
+            print("Training time exceeded")
+            break
 
     # Final Testing
     test_metrics = eval_model(args, test_loader, model, args.weights)
