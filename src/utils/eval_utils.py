@@ -1,5 +1,4 @@
 from tqdm import tqdm
-import torch.nn.functional as func
 
 import logging
 import numpy as np
@@ -27,8 +26,7 @@ def eval_model(args, data_loader, model, weights=None):
     Returns:
         dict: Dictionary containing the evaluation metrics
     """
-    # TODO fact check this, but I believe model.eval() will propogate to the submodules
-    model.backbone.eval()
+    model.eval()
     losses = AverageMeter()
     data_loader = tqdm(data_loader, disable=False)
 
@@ -39,20 +37,11 @@ def eval_model(args, data_loader, model, weights=None):
 
         for inputs, targets in data_loader:
             inputs, targets = inputs.to(args.device).float(), targets.to(args.device).long()
-            # TODO this is written like a variant of the forward function, but the naming overlaps
-            # with a common PyTorch function. Add 'eval_forward' to the method wrapper?
-            logits, _, _, _ = model.eval(inputs, targets)
-
+            output, loss = model.eval_forward(inputs, targets)
+            total_outputs.append(output)
             total_targets.append(targets)
-            # TODO probabilities of each class from the method wrapper will generalize better
-            # than logits
-            total_outputs.append(logits)
 
-            # TODO losses should be handled by the method wrapper
-            loss = func.cross_entropy(
-                logits, targets, weight=weights
-            ) if weights is not None else func.cross_entropy(logits, targets)
-            losses.update(loss.item(), inputs.shape[0])
+            losses.update(loss.item(), inputs.size(0))
 
         total_targets = torch.cat(total_targets).cpu().numpy()
         total_outputs = torch.cat(total_outputs).cpu().numpy()
@@ -119,14 +108,13 @@ def calculate_auroc(output, target):
     Returns:
         float: AUROC score
     """
-    probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
 
     # TODO is this actually used when num_classes=2? Do we have code to strip 1 class? If not,
     # can delete the following two lines
     if output.shape[1] == 1:  # Binary classification
-        auroc_score = roc_auc_score(target, probabilities[:, 1])
+        auroc_score = roc_auc_score(target, output[:, 1])
     else:  # Multi-class classification
-        auroc_score = roc_auc_score(target, probabilities, multi_class="ovr")
+        auroc_score = roc_auc_score(target, output, multi_class="ovr")
 
     return auroc_score * 100
 
@@ -140,20 +128,19 @@ def calculate_auprc(output, target):
     Returns:
         float: AUPRC score
     """
-    probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
 
     # TODO similar to AUROC, do we need separate logic here?
     # TODO use sklearn.metrics.average_precision_score
     if output.shape[1] == 1:  # Binary classification
-        precision, recall, _ = precision_recall_curve(target, probabilities[:, 1])
+        precision, recall, _ = precision_recall_curve(target, output[:, 1])
         auprc_score = auc(recall, precision)
     else:  # Multi-class classification
         auprc_score = 0
-        for class_idx in range(probabilities.shape[1]):
+        for class_idx in range(output.shape[1]):
             class_target = (target == class_idx).astype(int)
-            precision, recall, _ = precision_recall_curve(class_target, probabilities[:, class_idx])
+            precision, recall, _ = precision_recall_curve(class_target, output[:, class_idx])
             auprc_score += auc(recall, precision)
-        auprc_score /= probabilities.shape[1]  # Average across classes
+        auprc_score /= output.shape[1]  # Average across classes
 
     return auprc_score * 100
 
