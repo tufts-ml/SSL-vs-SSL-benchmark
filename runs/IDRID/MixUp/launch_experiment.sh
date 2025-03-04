@@ -28,7 +28,7 @@ export implementation='MixUp'
 # Experiment setting
 export dataset_name='IDRID'
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/$implementation/test"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/$implementation/linearprobing"
 
 mkdir -p $train_dir
 

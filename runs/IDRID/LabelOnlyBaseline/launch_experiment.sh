@@ -30,7 +30,7 @@ export resume='last_checkpoint.pth.tar'
 # Experiment setting
 export dataset_name='IDRID'
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/$implementation/fina/"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/$implementation/eval_test/"
 
 mkdir -p $train_dir
 
