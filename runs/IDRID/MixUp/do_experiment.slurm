@@ -26,6 +26,8 @@ python -m src.hyper_search \
     --test_dataset_path $test_dataset_path \
     --root_dataset_path $root_dataset_path \
     --labeledtrain_batchsize $labeledtrain_batchsize \
+    --use_pretrained \
+    --freeze_backbone \
     --num_workers $num_workers \
     --arch $arch \
     --train_epoch $train_epoch \
