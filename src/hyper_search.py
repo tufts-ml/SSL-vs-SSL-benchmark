@@ -504,6 +504,7 @@ def train(args, method_config):
     writer.add_scalar('test/balanced_accuracy', test_metrics['balanced_accuracy'], epoch)
     writer.add_scalar('test/auroc', test_metrics['auroc'], epoch)
     writer.add_scalar('test/auprc', test_metrics['auprc'], epoch)
+    writer.add_scalar('test/tpr_at_fpr_5', test_metrics['tpr_at_fpr_5'], epoch)
 
     with open(os.path.join(args.train_dir, 'training_summary.json'), 'w') as f:
         json.dump({'best_val_accuracy': best_val_acc, 'test_accuracy': test_acc,
