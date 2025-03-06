@@ -6,7 +6,7 @@ import os
 import pickle
 
 import torch
-from sklearn.metrics import auc
+from sklearn.metrics import auc, roc_curve
 from sklearn.metrics import confusion_matrix as sklearn_cm
 from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import roc_auc_score
@@ -61,6 +61,7 @@ def evaluate_all_metrics(outputs, targets):
         'balanced_accuracy': calculate_balanced_accuracy(predictions, targets),
         'auroc': calculate_auroc(outputs, targets),
         'auprc': calculate_auprc(outputs, targets),
+        'tpr_at_fpr_5': calculate_tpr_at_fpr_5(outputs, targets),
     }
 
 
@@ -103,17 +104,14 @@ def calculate_auroc(output, target):
     """
     Compute Area Under the Receiver Operating Characteristic Curve (AUROC)
     Args:
-        output (np.array): logits from model (N, num_classes)
+        output (np.array): probabiltities from model (N, num_classes)
         target (np.array): ground truth class indices (N,)
     Returns:
         float: AUROC score
     """
-
-    # TODO is this actually used when num_classes=2? Do we have code to strip 1 class? If not,
-    # can delete the following two lines
-    if output.shape[1] == 1:  # Binary classification
+    if output.shape[1] == 2:
         auroc_score = roc_auc_score(target, output[:, 1])
-    else:  # Multi-class classification
+    else:
         auroc_score = roc_auc_score(target, output, multi_class="ovr")
 
     return auroc_score * 100
@@ -129,20 +127,33 @@ def calculate_auprc(output, target):
         float: AUPRC score
     """
 
-    # TODO similar to AUROC, do we need separate logic here?
-    # TODO use sklearn.metrics.average_precision_score
-    if output.shape[1] == 1:  # Binary classification
+    if output.shape[1] == 2:
         precision, recall, _ = precision_recall_curve(target, output[:, 1])
         auprc_score = auc(recall, precision)
-    else:  # Multi-class classification
+    else:
         auprc_score = 0
-        for class_idx in range(output.shape[1]):
-            class_target = (target == class_idx).astype(int)
-            precision, recall, _ = precision_recall_curve(class_target, output[:, class_idx])
+        for i in range(output.shape[1]):
+            precision, recall, _ = precision_recall_curve(
+                target == i, output[:, i])
             auprc_score += auc(recall, precision)
-        auprc_score /= output.shape[1]  # Average across classes
+        auprc_score /= output
 
     return auprc_score * 100
+
+
+def calculate_tpr_at_fpr_5(probs, labels):
+    num_classes = probs.shape[1]
+    tpr_scores = []
+
+    for class_idx in range(num_classes):
+        # Convert labels to binary (one-vs-rest)
+        binary_labels = (labels == class_idx).astype(int)
+
+        fpr, tpr, _ = roc_curve(binary_labels, probs[:, class_idx])
+        tpr_at_fpr_5 = tpr[np.where(fpr < 0.05)[0][-1]] if np.any(fpr < 0.05) else 0.0
+        tpr_scores.append(tpr_at_fpr_5)
+
+    return (np.mean(tpr_scores) * 100)  # Average TPR across all classes
 
 
 def save_pickle(save_dir, save_file_name, data):
