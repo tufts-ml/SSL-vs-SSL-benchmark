@@ -2,10 +2,11 @@
 #SBATCH --job-name=hyper_search
 #SBATCH --output=experiment_output_%j.log
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=16
 #SBATCH --mem=16G
-#SBATCH --time=10:00:00  # Adjust as needed
-#SBATCH --partition=preempt
+#SBATCH --time=24:00:00  # Adjust as needed
+#SBATCH --partition=hugheslab
+#SBATCH --gres=gpu:rtx_6000:1
 
 # Load the necessary modules (if required)
 # module load python/3.8.5  # Example
@@ -18,7 +19,7 @@ export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
 
 # Running the Python script with parameters
 python -m src.hyper_search \
-    --method $method \
+    --implementation $implementation \
     --dataset_name $dataset_name \
     --l_train_dataset_path $l_train_dataset_path \
     --val_dataset_path $val_dataset_path \
@@ -27,7 +28,8 @@ python -m src.hyper_search \
     --labeledtrain_batchsize $labeledtrain_batchsize \
     --num_workers $num_workers \
     --arch $arch \
-    --use_pretrained $use_pretrained \
+    --use_pretrained \
+    --freeze_backbone \
     --train_epoch $train_epoch \
     --start_epoch $start_epoch \
     --total_hour $total_hour \

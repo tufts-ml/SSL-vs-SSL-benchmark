@@ -60,22 +60,6 @@ class EarlyStopping:
 def onehot(label, n_classes):
     return torch.zeros(label.size(0), n_classes).scatter_(1, label.view(-1, 1).long(), 1)
 
-def mixup(data, data2, targets, alpha, n_classes):
-    indices = torch.randperm(data2.size(0))
-    
-    data2 = data2[indices]
-    targets2 = targets[indices]
-
-    targets = onehot(targets, n_classes)
-#     print('Inside mixup, onehot targets: {}, shape: {}'.format(targets, targets.shape))
-    targets2 = onehot(targets2, n_classes)
-#     print('Inside mixup, onehot targets2: {}, shape: {}'.format(targets2, targets2.shape))
-
-    lam = np.random.beta(alpha, alpha)
-    created_data = data * lam + data2 * (1 - lam)
-    created_targets = targets * lam + targets2 * (1 - lam)
-
-    return created_data, created_targets
 
 
 def train_one_epoch(args, weights, labeledtrain_loader, model, optimizer, scheduler, epoch):

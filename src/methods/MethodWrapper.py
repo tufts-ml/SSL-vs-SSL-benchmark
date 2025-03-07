@@ -12,9 +12,7 @@ class MethodWrapper(nn.Module):
         super().__init__()
         self.backbone = backbone
         self.args = args
-        # self.backbone.fc = nn.Linear(512, args.num_classes)
-        # if self.args.dataset_name == "CheXpert":
-        #     self.backbone.fc = nn.Linear(512, 5)
+        self.backbone.fc = nn.Linear(512, args.num_classes)
 
     def forward(self, l_data, l_labels, u_data):
         """Forward pass for a learning method
@@ -26,8 +24,23 @@ class MethodWrapper(nn.Module):
 
         Returns:
             tuple:
+                output: predictions of the model
                 loss: loss value to get backpropagated
                 s_loss: loss value from supervised loss (0 if no supervised loss)
                 u_loss: loss value from unsupervised loss (0 if no unsupervised loss)
         """
+        raise NotImplementedError()
+
+    def eval_forward(self, l_data, l_labels):
+        """Forward pass for evaluation
+
+            Args:
+                l_data (torch.Tensor): Labeled data batch
+                l_labels (torch.tensor): Labeled batch labels
+
+            Returns:
+                tuple:
+                    output: predictions of the model
+                    loss: loss value 
+            """
         raise NotImplementedError()

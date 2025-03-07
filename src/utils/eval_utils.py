@@ -1,5 +1,4 @@
 from tqdm import tqdm
-import torch.nn.functional as func
 
 import logging
 import numpy as np
@@ -7,15 +6,12 @@ import os
 import pickle
 
 import torch
-from sklearn.metrics import auc
+from sklearn.metrics import auc, roc_curve
 from sklearn.metrics import confusion_matrix as sklearn_cm
 from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import roc_auc_score
 
 from src.utils.train_utils import AverageMeter
-
-
-logger = logging.getLogger(__name__)
 
 
 def eval_model(args, data_loader, model, weights=None):
@@ -30,131 +26,98 @@ def eval_model(args, data_loader, model, weights=None):
     Returns:
         dict: Dictionary containing the evaluation metrics
     """
-    model.backbone.eval()
-    losses = AverageMeter()
+    model.eval()
+    loss_meter = AverageMeter()
     data_loader = tqdm(data_loader, disable=False)
 
+    weights = weights.to(args.device) if weights is not None else None
+
     with torch.no_grad():
-        total_targets, total_outputs = [], []
+        all_labels, all_probs = [], []
 
-        for inputs, targets in data_loader:
-            inputs, targets = inputs.to(args.device).float(), targets.to(args.device).long()
-            logits, _, _, _ = model.forward(inputs, targets)
+        for inputs, labels in data_loader:
+            inputs, labels = inputs.to(args.device).float(), labels.to(args.device).long()
+            probs, loss = model.eval_forward(inputs, labels)
+            all_probs.append(probs)
+            all_labels.append(labels)
 
-            total_targets.append(targets.cpu().numpy())
-            total_outputs.append(logits.cpu().numpy())
+            loss_meter.update(loss.item(), inputs.size(0))
 
-            loss = func.cross_entropy(
-                    logits, targets, weight=weights
-                ) if weights is not None else func.cross_entropy(logits, targets)
-            losses.update(loss.item(), inputs.shape[0])
-
-        total_targets = np.concatenate(total_targets, axis=0)
-        total_outputs = np.concatenate(total_outputs, axis=0)
+        all_labels = torch.cat(all_labels).cpu().numpy()
+        all_probs = torch.cat(all_probs).cpu().numpy()
 
         data_loader.close()
 
-    metrics = evaluate_all_metrics(total_outputs, total_targets)
-    metrics['loss'] = losses.avg
+    metrics = evaluate_all_metrics(all_probs, all_labels)
+    metrics['loss'] = loss_meter.avg
 
     return metrics
 
 
-def evaluate_all_metrics(outputs, targets):
-    predictions = outputs.argmax(axis=1)
+def evaluate_all_metrics(probs, labels):
+    preds = probs.argmax(axis=1)
     return {
-        'plain_accuracy': calculate_plain_accuracy(predictions, targets),
-        'balanced_accuracy': calculate_balanced_accuracy(predictions, targets),
-        'auroc': calculate_auroc(outputs, targets),
-        'auprc': calculate_auprc(outputs, targets),
+        'plain_accuracy': calculate_plain_accuracy(preds, labels),
+        'balanced_accuracy': calculate_balanced_accuracy(preds, labels),
+        'auroc': calculate_auroc(probs, labels),
+        'auprc': calculate_auprc(probs, labels),
+        'tpr_at_fpr_5': calculate_tpr_at_fpr_5(probs, labels),
     }
 
 
-def calculate_plain_accuracy(predictions, target):
-    """
-    Compute plain accuracy
-    Args:
-        predictions (np.array): predicted class indices
-        target (np.array): ground truth class indices
-    Returns:
-        float: accuracy percentage
-    """
-    return (predictions == target).mean() * 100
+def calculate_plain_accuracy(preds, labels):
+    return (preds == labels).mean() * 100
 
 
-def calculate_balanced_accuracy(predictions, target):
-    """
-    Compute balanced accuracy using confusion matrix.
-    Args:
-        predictions (np.array): predicted class indices
-        target (np.array): ground truth class indices
-    Returns:
-        float: balanced accuracy percentage
-    """
-    confusion_matrix = sklearn_cm(target, predictions)
-    n_class = confusion_matrix.shape[0]
+def calculate_balanced_accuracy(preds, labels):
+    cm = sklearn_cm(labels, preds)
+    num_classes = cm.shape[0]
 
     recalls = []
-    for i in range(n_class):
-        recall = confusion_matrix[i, i] / \
-            np.sum(confusion_matrix[i]) if np.sum(confusion_matrix[i]) > 0 else 0
+    for i in range(num_classes):
+        recall = cm[i, i] / np.sum(cm[i]) if np.sum(cm[i]) > 0 else 0
         recalls.append(recall)
 
-    balanced_accuracy = np.mean(recalls) * 100
-
-    return balanced_accuracy
+    return np.mean(recalls) * 100
 
 
-def calculate_auroc(output, target):
-    """
-    Compute Area Under the Receiver Operating Characteristic Curve (AUROC)
-    Args:
-        output (np.array): logits from model (N, num_classes)
-        target (np.array): ground truth class indices (N,)
-    Returns:
-        float: AUROC score
-    """
-    probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
-
-    if output.shape[1] == 1:  # Binary classification
-        auroc_score = roc_auc_score(target, probabilities[:, 1])
-    else:  # Multi-class classification
-        auroc_score = roc_auc_score(target, probabilities, multi_class="ovr")
-
-    return auroc_score * 100
+def calculate_auroc(probs, labels):
+    if probs.shape[1] == 2:
+        return roc_auc_score(labels, probs[:, 1]) * 100
+    return roc_auc_score(labels, probs, multi_class="ovr") * 100
 
 
-def calculate_auprc(output, target):
-    """
-    Compute Area Under the Precision-Recall Curve (AUPRC)
-    Args:
-        output (np.array): logits from model (N, num_classes)
-        target (np.array): ground truth class indices (N,)
-    Returns:
-        float: AUPRC score
-    """
-    probabilities = func.softmax(torch.tensor(output), dim=1).numpy()
+def calculate_auprc(probs, labels):
+    if probs.shape[1] == 2:
+        precision, recall, _ = precision_recall_curve(labels, probs[:, 1])
+        return auc(recall, precision) * 100
 
-    if output.shape[1] == 1:  # Binary classification
-        precision, recall, _ = precision_recall_curve(target, probabilities[:, 1])
-        auprc_score = auc(recall, precision)
-    else:  # Multi-class classification
-        auprc_score = 0
-        for class_idx in range(probabilities.shape[1]):
-            class_target = (target == class_idx).astype(int)
-            precision, recall, _ = precision_recall_curve(class_target, probabilities[:, class_idx])
-            auprc_score += auc(recall, precision)
-        auprc_score /= probabilities.shape[1]  # Average across classes
-
-    return auprc_score * 100
+    auprc_score = 0
+    for class_idx in range(probs.shape[1]):
+        class_targets = (labels == class_idx).astype(int)
+        precision, recall, _ = precision_recall_curve(class_targets, probs[:, class_idx])
+        auprc_score += auc(recall, precision)
+    return (auprc_score / probs.shape[1]) * 100
 
 
-def save_pickle(save_dir, save_file_name, data):
+def calculate_tpr_at_fpr_5(probs, labels):
+    num_classes = probs.shape[1]
+    tpr_scores = []
+
+    for class_idx in range(num_classes):
+        binary_labels = (labels == class_idx).astype(int)
+        fpr, tpr, _ = roc_curve(binary_labels, probs[:, class_idx])
+        tpr_at_fpr_5 = tpr[np.where(fpr < 0.05)[0][-1]] if np.any(fpr < 0.05) else 0.0
+        tpr_scores.append(tpr_at_fpr_5)
+
+    return (np.mean(tpr_scores) * 100)
+
+
+def save_pickle(save_dir, file_name, data):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    data_save_fullpath = os.path.join(save_dir, save_file_name)
-    with open(data_save_fullpath, 'wb') as handle:
+    with open(os.path.join(save_dir, file_name), 'wb') as handle:
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
@@ -165,11 +128,14 @@ def get_mean_and_std(dataset):
 
     mean = torch.zeros(3)
     std = torch.zeros(3)
+    logger = logging.getLogger(__name__)
     logger.info('==> Computing mean and std..')
     for inputs, targets in dataloader:
+        # TODO use dim param of functions to eliminate this loop
         for i in range(3):
             mean[i] += inputs[:, i, :, :].mean()
             std[i] += inputs[:, i, :, :].std()
+    # TODO why might these values be closer to 0 than expected?
     mean.div_(len(dataset))
     std.div_(len(dataset))
     return mean, std
