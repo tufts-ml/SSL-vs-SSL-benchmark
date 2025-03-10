@@ -11,7 +11,7 @@ from sklearn.metrics import confusion_matrix as sklearn_cm
 from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import roc_auc_score
 
-from src.utils.train_utils import AverageMeter
+from ssl_bench.utils.train_utils import AverageMeter
 
 
 def eval_model(args, data_loader, model, weights=None):
