@@ -1,4 +1,4 @@
-from src.methods.MethodWrapper import MethodWrapper
+from ssl_bench.methods.MethodWrapper import MethodWrapper
 from torch.nn import functional as func
 import torch
 import numpy as np
