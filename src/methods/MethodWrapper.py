@@ -15,6 +15,7 @@ class MethodWrapper(nn.Module):
         self.backbone.fc = nn.Linear(512, args.num_classes)
 
     def forward(self, l_data, l_labels, u_data):
+        # TODO what is a more descriptive name for output? What are the shapes?
         """Forward pass for a learning method
 
         Args:
@@ -31,6 +32,7 @@ class MethodWrapper(nn.Module):
         """
         raise NotImplementedError()
 
+    # TODO is this just a subset of the outputs of forward?
     def eval_forward(self, l_data, l_labels):
         """Forward pass for evaluation
 
