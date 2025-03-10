@@ -17,7 +17,6 @@ import shutil
 import time
 import json
 
-
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -28,13 +27,14 @@ from torchvision import transforms
 
 from torch.utils.tensorboard import SummaryWriter
 
-from src.dataset_flexmatch import data as dataset
-from src.randaugment import RandAugmentMC
-from src.FlexMatch.libml.utils import save_pickle
-from src.FlexMatch.libml.utils import train_one_epoch, eval_model
-from src.FlexMatch.libml.utils import EarlyStopping
-from src.config import dataset_configs
+from ssl_bench.dataset import data as dataset
+from ssl_bench.PseudoLabeling.libml.utils import save_pickle
+from ssl_bench.PseudoLabeling.libml.utils import train_one_epoch, eval_model
+from ssl_bench.PseudoLabeling.libml.utils import EarlyStopping
+from ssl_bench.config import dataset_configs
 
+
+from ssl_bench.PseudoLabeling.libml.utils.pseudo_label import PL
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +57,7 @@ parser.add_argument('--resume', default='', type=str,
 parser.add_argument('--resume_checkpoint_fullpath', default='', type=str,
                     help='fullpath of the checkpoint to resume from(default: none)')
 
-parser.add_argument('--train_dir', 
-                    help='directory to output the result')
+parser.add_argument('--train_dir', help='directory to output the result')
 
 
 #data paths
@@ -72,7 +71,7 @@ parser.add_argument('--labeledtrain_batchsize', default=50, type=int)
 parser.add_argument('--unlabeledtrain_batchsize', default=50, type=int)
 parser.add_argument("--em", default=0, type=float, help="coefficient of entropy minimization. If you try VAT + EM, set 0.06")
 
-#FM config
+#PL config
 parser.add_argument('--lr', default=3e-4, type=float, help='learning rate')
 parser.add_argument('--lr_warmup_epochs', default=0, type=float,
                     help='warmup epoch for learning rate schedule') #following MixMatch and FixMatch repo
@@ -84,15 +83,7 @@ parser.add_argument('--lr_cycle_epochs', default=10000, type=int) #following Mix
 parser.add_argument('--wd', default=5e-4, type=float, help='weight decay')
 parser.add_argument('--optimizer_type', default='SGD', choices=['SGD', 'Adam'], type=str) 
 
-
-parser.add_argument('--temperature', default=0.95, type=float, help='temperature for label guessing')
-
-parser.add_argument('--mu', default=7, type=int,
-                    help='coefficient of unlabeled batch size')
-
-parser.add_argument('--threshold', default=0.95, type=float,
-                    help='pseudo label threshold')
-
+parser.add_argument('--threshold', default=0.95, type=float, help='confidence threshold')
 
 
 parser.add_argument('--lambda_u_max', default=1, type=float, help='coefficient of unlabeled loss')
@@ -100,6 +91,8 @@ parser.add_argument('--lambda_u_max', default=1, type=float, help='coefficient o
 parser.add_argument('--unlabeledloss_warmup_schedule_type', default='NoWarmup', choices=['NoWarmup', 'Linear', 'Sigmoid', ], type=str) 
 
 parser.add_argument('--unlabeledloss_warmup_pos', default=0.4, type=float, help='position at which unlabeled loss warmup ends') #following MixMatch and FixMatch repo
+
+
 
 
 #default hypers not to search for now
@@ -193,7 +186,7 @@ def create_model(args):
         model = models.resnet18(pretrained=args.use_pretrained)
         #https://stackoverflow.com/questions/52548174/how-to-remove-the-last-fc-layer-from-a-resnet-model-in-pytorch
         model.fc = torch.nn.Linear(512, args.num_classes)
-        
+    
     elif args.arch=='wideresnet':
         import backbone.wideresnet as models
         model_depth = 28
@@ -203,6 +196,7 @@ def create_model(args):
                                         widen_factor=model_width,
                                         dropout=0.0,
                                         num_classes=args.num_classes)
+        
     else:
         raise NameError('Note implemented yet')
     
@@ -225,8 +219,8 @@ def main(args):
     dataset_mean = dataset_configs[args.dataset_name]['dataset_mean']
     dataset_std = dataset_configs[args.dataset_name]['dataset_std']
     image_size = dataset_configs[args.dataset_name]['image_size']
-
     
+   
     transform_labeledtrain = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(size=image_size,
@@ -242,41 +236,26 @@ def main(args):
     ])
     
     
-    class TransformFixMatch(object):
-        def __init__(self, mean, std):
-            self.weak = transforms.Compose([
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomCrop(size=image_size,
-                                      padding=int(image_size*0.125),
-                                      padding_mode='reflect')])
-            self.strong = transforms.Compose([
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomCrop(size=image_size,
-                                      padding=int(image_size*0.125),
-                                      padding_mode='reflect'),
-                RandAugmentMC(n=2, m=10)])
-            self.normalize = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize(mean=mean, std=std)])
-
+    class TransformTwice:
+        def __init__(self, transform_fn):
+            self.transform_fn = transform_fn
+        
         def __call__(self, x):
-            weak = self.weak(x)
-            strong = self.strong(x)
-            return self.normalize(weak), self.normalize(strong)
-
+            out1 = self.transform_fn(x)
+            out2 = self.transform_fn(x)
         
-        
+            return out1, out2
+    
 
     l_train_dataset = dataset(args.dataset_name, args.l_train_dataset_path, transform_fn=transform_labeledtrain)
-    u_train_dataset = dataset(args.dataset_name, args.u_train_dataset_path, transform_fn=TransformFixMatch(mean=dataset_mean, std=dataset_std))
+    u_train_dataset = dataset(args.dataset_name, args.u_train_dataset_path, transform_fn=TransformTwice(transform_labeledtrain))
     val_dataset = dataset(args.dataset_name, args.val_dataset_path, transform_fn=transform_eval)
     test_dataset = dataset(args.dataset_name, args.test_dataset_path, transform_fn=transform_eval)
-    
     
     #########################################for loop from here##################################  
     global_best_val_raw_acc_list_parallel = []
     global_best_test_raw_acc_at_val_list_parallel = []
-    
+
     global_best_val_raw_acc = 0
     global_best_test_raw_acc_at_val = 0
 #     global_best_train_raw_acc_at_val = 0
@@ -289,7 +268,7 @@ def main(args):
     #start timing
     hypercombo_iteratethrough_list = [] #newly added
     hypercombo_iteratethrough_time_list = []
-    
+
     start_time = time.time()
     total_used_time = 0
     
@@ -312,30 +291,30 @@ def main(args):
         this_hypercombo_best_test_raw_acc_at_val_list_parallel = []
 
         
+        ssl_obj = PL(args.threshold, args.num_classes)
+
         args.lr = lr
         args.wd = wd
         args.lambda_u_max = lambda_u_max
 
-        experiment_name = "LambdaUMax-{}_lr-{}_wd-{}_temperature-{}_mu-{}_threshold-{}_em-{}".format(args.lambda_u_max, args.lr, args.wd,  args.temperature, args.mu, args.threshold, args.em)
+        experiment_name = "LambdaUMax-{}_lr-{}_wd-{}_threshold-{}_em-{}".format(args.lambda_u_max, args.lr, args.wd, args.threshold, args.em)
 
         args.experiment_dir = os.path.join(args.train_dir, 'hypercombos', experiment_name)
 
         #brief summary:
         brief_summary = {}
         brief_summary['dataset_name'] = args.dataset_name
-        brief_summary['algorithm'] = 'FlexMatch'
+        brief_summary['algorithm'] = 'PL_RE5'
         brief_summary['hyperparameters'] = {
             'optimizer': args.optimizer_type,
             'lr_schedule_type': args.lr_schedule_type,
             'lr_cycle_epochs': args.lr_cycle_epochs,
             'unlabeledloss_warmup_schedule_type':args.unlabeledloss_warmup_schedule_type,
             'unlabeledloss_warmup_pos': args.unlabeledloss_warmup_pos,
-            'lambda_u_max': args.lambda_u_max,        
+            'lambda_u_max': args.lambda_u_max,
             'lr': args.lr,
             'wd': args.wd,
-            'temperature': args.temperature,
-            'mu': args.mu,
-            'threshold':args.threshold,
+            'threshold': args.threshold,
         }
 
 
@@ -353,31 +332,33 @@ def main(args):
         len(l_train_dataset), len(u_train_dataset), len(l_train_dataset)+len(u_train_dataset)))
         print("validation data : {}, test data : {}".format(len(val_dataset), len(test_dataset)))
     
-    
+
         l_loader = DataLoader(l_train_dataset, args.labeledtrain_batchsize, shuffle=True, drop_last=True, num_workers=args.num_workers)
         u_loader = DataLoader(u_train_dataset, args.unlabeledtrain_batchsize, shuffle=True, drop_last=True, num_workers=args.num_workers)
         val_loader = DataLoader(val_dataset, 128, shuffle=False, drop_last=False, num_workers=args.num_workers)
         test_loader = DataLoader(test_dataset, 128, shuffle=False, drop_last=False, num_workers=args.num_workers)
 
+
         #create model
-        model = create_model(args) #use transform_fn=None, since MM script already applied transform when constructing dataset
+        model = create_model(args)
         model.to(args.device)
 
-        #optimizer_type choice
         no_decay = ['bias', 'bn']
         grouped_parameters = [
-                {'params': [p for n, p in model.named_parameters() if not any(
-                    nd in n for nd in no_decay)], 'weight_decay': args.wd},
-                {'params': [p for n, p in model.named_parameters() if any(
-                    nd in n for nd in no_decay)], 'weight_decay': 0.0}
-            ]
+            {'params': [p for n, p in model.named_parameters() if not any(
+                nd in n for nd in no_decay)], 'weight_decay': args.wd},
+            {'params': [p for n, p in model.named_parameters() if any(
+                nd in n for nd in no_decay)], 'weight_decay': 0.0}
+        ]
 
+        #optimizer_type choice
         if args.optimizer_type == 'SGD':
             optimizer = optim.SGD(grouped_parameters, lr=args.lr,
                                   momentum=0.9, nesterov=args.nesterov)
 
         elif args.optimizer_type == 'Adam':
             optimizer = optim.Adam(grouped_parameters, lr=args.lr)
+
         else:
             raise NameError('Not supported optimizer setting')
 
@@ -394,12 +375,12 @@ def main(args):
             raise NameError('Not supported lr scheduler setting')
 
 
-        #instantiate the ema model object
+#         #instantiate the ema model object
 #         ema_model = ModelEMA(args, model, args.ema_decay)
 
         args.start_epoch = 0
 
-
+    
         best_val_raw_acc = 0
         best_test_raw_acc_at_val = 0
 #                 best_train_raw_acc_at_val = 0
@@ -407,9 +388,8 @@ def main(args):
         this_hypercombo_best_val_raw_acc_list_parallel.append(best_val_raw_acc)
         this_hypercombo_best_test_raw_acc_at_val_list_parallel.append(best_test_raw_acc_at_val)
 
-        
-        current_count=0 #for early stopping, when continue training
-        
+
+        current_count=0 #for early stopping, when continue training    
         if args.resume_checkpoint_fullpath is not None:
             try:
                 os.path.isfile(args.resume_checkpoint_fullpath)
@@ -417,7 +397,6 @@ def main(args):
                 checkpoint = torch.load(args.resume_checkpoint_fullpath)
                 args.start_epoch = checkpoint['epoch']
                 model.load_state_dict(checkpoint['state_dict'])
-#                 ema_model.ema.load_state_dict(checkpoint['ema_state_dict'])
 
                 best_val_raw_acc = checkpoint['best_val_raw_acc']
                 best_test_raw_acc_at_val = checkpoint['best_test_raw_acc_at_val']
@@ -429,7 +408,7 @@ def main(args):
             except:
                 print('!!!!Does not have checkpoint yet!!!!')
 
-            
+
         logger.info("***** Running training *****")
         logger.info(f"  Task = {args.dataset_name}")
         logger.info(f"  Num Epochs = {args.train_epoch}")
@@ -444,37 +423,36 @@ def main(args):
         for epoch in range(args.start_epoch, args.train_epoch):
             
             #train
-            train_total_loss_list, train_labeled_loss_list, train_unlabeled_loss_unscaled_list, train_unlabeled_loss_scaled_list = train_one_epoch(args, weights, l_loader, u_loader, model, optimizer, scheduler, epoch)
+            train_total_loss_list, train_labeled_loss_list, train_unlabeled_loss_unscaled_list, train_unlabeled_loss_scaled_list = train_one_epoch(args, weights, ssl_obj, l_loader, u_loader, model, optimizer, scheduler, epoch)
 
-
+            
             #val
             val_loss, val_raw_acc, val_true_labels, val_raw_predictions = eval_model(args, val_loader, model, epoch, evaluation_criterion='balanced_accuracy')
-
 
             #test
             test_loss, test_raw_acc, test_true_labels, test_raw_predictions = eval_model(args, test_loader, model, epoch, evaluation_criterion='balanced_accuracy')
 
 
             if val_raw_acc > best_val_raw_acc:
-                is_best=True
+                is_best = True
 
                 best_val_raw_acc = val_raw_acc
                 best_test_raw_acc_at_val = test_raw_acc
-#                                 best_train_raw_acc_at_val = train_raw_acc
+#                 best_train_raw_acc_at_val = train_raw_acc
 
 
 
             this_hypercombo_best_val_raw_acc_list_parallel.append(best_val_raw_acc)
             this_hypercombo_best_test_raw_acc_at_val_list_parallel.append(best_test_raw_acc_at_val)
 
+
             elapsed_time = time.time() - start_time
             total_used_time += elapsed_time
 
-            start_time = time.time() #reinitialize 
+            start_time = time.time() #reinitialize
 
 
             logger.info('RAW Best , validation/test %.2f %.2f' % (best_val_raw_acc, best_test_raw_acc_at_val))
-
 
             args.writer.add_scalar('train/3.total_loss', np.mean(train_total_loss_list), epoch)
             args.writer.add_scalar('train/4.labeled_loss', np.mean(train_labeled_loss_list), epoch)
@@ -486,7 +464,6 @@ def main(args):
             args.writer.add_scalar('test/1.test_raw_acc', test_raw_acc, epoch)
             args.writer.add_scalar('test/3.test_loss', test_loss, epoch)
 
-
             brief_summary["number_of_data"] = {
         "labeled":len(l_train_dataset), "unlabeled":len(u_train_dataset),
         "validation":len(val_dataset), "test":len(test_dataset)
@@ -497,7 +474,6 @@ def main(args):
 
             with open(os.path.join(args.experiment_dir + "brief_summary.json"), "w") as f:
                 json.dump(brief_summary, f)
-
 
             #early stopping
             current_count = early_stopping(val_raw_acc)
@@ -529,36 +505,31 @@ def main(args):
         hypercombo_iteratethrough_time_list.append(this_hypercombo_iteratethrough_time)#newly added
         save_pickle(os.path.join(args.train_dir, 'global_stats'), 'hypercombo_iteratethrough_time_list.pkl', hypercombo_iteratethrough_time_list)
         
-
         brief_summary["number_of_data"] = {
         "labeled":len(l_train_dataset), "unlabeled":len(u_train_dataset),
         "validation":len(val_dataset), "test":len(test_dataset)
     }
         
-        
         brief_summary['best_test_raw_acc_at_val'] = best_test_raw_acc_at_val
         brief_summary['best_val_raw_acc'] = best_val_raw_acc
-        
-                
+
         global_best_val_raw_acc_list_parallel.append(this_hypercombo_best_val_raw_acc_list_parallel)
         global_best_test_raw_acc_at_val_list_parallel.append(this_hypercombo_best_test_raw_acc_at_val_list_parallel)
 
-
+        
         save_pickle(os.path.join(args.train_dir, 'global_stats'), 'global_best_val_raw_acc_list_parallel.pkl', global_best_val_raw_acc_list_parallel)
         save_pickle(os.path.join(args.train_dir, 'global_stats'), 'global_best_test_raw_acc_at_val_list_parallel.pkl', global_best_test_raw_acc_at_val_list_parallel)
+        
         
         args.writer.close()
 
         with open(os.path.join(args.experiment_dir + "brief_summary.json"), "w") as f:
             json.dump(brief_summary, f)
-
         
     save_pickle(os.path.join(args.train_dir, 'global_stats'), 'total_time.pkl', [total_used_time])
 
-        
-        
-        
-        
+
+
 if __name__ == '__main__':
     args = parser.parse_args()
     
@@ -566,7 +537,7 @@ if __name__ == '__main__':
     args.nimg_per_epoch = dataset_configs[args.dataset_name]['nimg_per_epoch'] #total size of labeled + unlabeled set for TissueMNIST
     args.num_classes = dataset_configs[args.dataset_name]['num_classes']
     
-    
+        
     cuda = torch.cuda.is_available()
     
     if cuda:
@@ -584,12 +555,12 @@ if __name__ == '__main__':
         level=logging.INFO)
 
     logger.info(dict(args._get_kwargs()))
-
-        
+   
+    
     if args.training_seed is not None:
         print('setting training seed{}'.format(args.training_seed), flush=True)
         set_seed(args.training_seed)
-                
+
     main(args)
     
     

@@ -1,5 +1,5 @@
 import argparse
-from src.config import dataset_configs
+from ssl_bench.config import dataset_configs
 
 
 def parse_args():

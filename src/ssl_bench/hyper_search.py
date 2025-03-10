@@ -11,18 +11,18 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import torch.nn.init as init
 
-from src.config import dataset_configs, method_configs, HyperparamSpace
-from src.utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_schedule_with_warmup,
+from ssl_bench.config import dataset_configs, method_configs, HyperparamSpace
+from ssl_bench.utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_schedule_with_warmup,
                                    get_fixed_lr, EarlyStopping)
-from src.utils.apply_clahe import apply_clahe
-from src.utils.eval_utils import (
+from ssl_bench.utils.apply_clahe import apply_clahe
+from ssl_bench.utils.eval_utils import (
     calculate_plain_accuracy,
     eval_model,
 )
-from src.utils.arg_parser import parse_args
-from src.methods.LabelOnlyBaseline import LabelOnlyBaseline
-from src.methods.MixUp import MixUp
-from src.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
+from ssl_bench.utils.arg_parser import parse_args
+from ssl_bench.methods.LabelOnlyBaseline import LabelOnlyBaseline
+from ssl_bench.methods.MixUp import MixUp
+from ssl_bench.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 
 
 class TransformTwice:
