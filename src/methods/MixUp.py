@@ -4,6 +4,7 @@ import torch
 import numpy as np
 
 
+# TODO replace following two functions with PyTorch implementation
 # https://github.com/hysts/pytorch_mixup/blob/master/utils.py
 # also similar style as google mixmatch repo mixup baseline
 def onehot(label, n_classes):
@@ -26,7 +27,9 @@ def mixup(data, data2, targets, alpha, n_classes):
     return created_data, created_targets
 
 
+# TODO should this inherit from LabelOnlyBaseline?
 class MixUp(MethodWrapper):
+    # TODO do we want u_data=None in the base class?
     def forward(self, l_data, l_labels, u_data=None):
         self.backbone.train()
 
