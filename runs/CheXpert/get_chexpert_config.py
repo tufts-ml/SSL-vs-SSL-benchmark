@@ -1,32 +1,20 @@
-
 import pandas as pd
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
-
 IMAGE_PATH = "/cluster/tufts/hugheslab/datasets/chexpert_sample_data/images"
-
-# train_csv = "/cluster/tufts/hugheslab/datasets/chexpert_sample_data/train_data.csv"
-# valid_csv = "/cluster/tufts/hugheslab/datasets/chexpert_sample_data/val_data.csv"
-
-# train_df = pd.read_csv(train_csv)
-# valid_df = pd.read_csv(valid_csv)
-
-# all_images = pd.concat([train_df, valid_df], ignore_index=True)
 LABEL_PATH = "/cluster/tufts/hugheslab/datasets/chexpert_sample_data/sampled_train.csv"
 
 all_images = pd.read_csv(LABEL_PATH)
 
+# Drop samples with -1 label instead of casting them to 1
+all_images = all_images[all_images['Pleural Effusion'] != -1]
+
 image_paths = all_images['Path']
 
-# Only Atelectasis
-labels = all_images['Atelectasis']
-
-labels = labels.fillna(0)  # Replace NaN values with 0
-
-labels[labels == -1] = 1
-labels = labels.astype(np.int32).values
+# Only Pleural Effusion labels
+labels = all_images['Pleural Effusion'].fillna(0).astype(np.int32).values  # Replace NaN values with 0
 
 pixel_sum = np.zeros(3)
 pixel_squared_sum = np.zeros(3)

@@ -17,7 +17,7 @@ fi
 
 # Set up environment variables
 export resized_shape=384
-export num_workers=4
+export num_workers=1
 export total_hour=10
 export num_classes=2
 export use_pretrained=""
@@ -31,7 +31,7 @@ export dataset_name='CheXpert2'
 export data_seed=0
 export training_seed=0
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/data_seed$data_seed/training_seed$training_seed/$implementation/pretrained$use_pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/binary25h/data_seed$data_seed/training_seed$training_seed/$implementation/pretrained$use_pretrained"
 echo "Training directory: $train_dir"
 
 mkdir -p $train_dir

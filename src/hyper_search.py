@@ -346,7 +346,7 @@ def setup_training(args, method_config: HyperparamSpace):
 
     return model, optimizer, scheduler, train_loader, val_loader, test_loader
 
-
+import cProfile
 def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
     """Train model for one epoch
 
@@ -419,6 +419,17 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
 
     all_logits = torch.cat(all_logits)
     all_labels = torch.cat(all_labels)
+
+    for epoch in range(args.start_epoch, args.train_epoch):
+        pr = cProfile.Profile()
+        pr.enable()
+        train_loss, logits, labels = train_one_epoch(
+            args, model, optimizer, scheduler, train_loader, epoch)
+        pr.disable()
+        pr.dump_stats("latest.stats")
+        stats = Stats(pr)
+        stats.sort_stats("tottime").print_stats(25)
+        pr.print_stats(sort='time')
 
     return labeled_loss.avg, all_logits, all_labels
 

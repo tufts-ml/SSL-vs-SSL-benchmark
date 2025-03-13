@@ -20,7 +20,6 @@ class LabeledImageCSVDataset(VisionDataset):
         target_transform (callable, optional): Optional transform to be applied
             on a label.
     """
-    print("HERE\n")
 
     def __init__(self, csv_file, root_dir, transforms=None, transform=None,
                  target_transform=None):
@@ -92,7 +91,6 @@ class CheXpertDataset(VisionDataset):
         target_transform (callable, optional): Optional transform to be applied
             on a label.
     """
-    print("HERE2\n")
 
     def __init__(self, csv_file, root_dir, transforms=None, transform=None,
                  target_transform=None):
