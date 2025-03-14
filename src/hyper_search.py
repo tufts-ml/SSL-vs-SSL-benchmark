@@ -4,10 +4,12 @@ import os
 import time
 
 from torchvision import transforms
+from torchvision.models import resnet18, ResNet18_Weights
 import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+import torch.nn.init as init
 
 from src.config import dataset_configs, method_configs, HyperparamSpace
 from src.utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_schedule_with_warmup,
@@ -19,7 +21,19 @@ from src.utils.eval_utils import (
 )
 from src.utils.arg_parser import parse_args
 from src.methods.LabelOnlyBaseline import LabelOnlyBaseline
+from src.methods.MixUp import MixUp
 from src.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
+
+
+class TransformTwice:
+    def __init__(self, transform_fn):
+        self.transform_fn = transform_fn
+
+    def __call__(self, x):
+        out1 = self.transform_fn(x)
+        out2 = self.transform_fn(x)
+
+        return out1, out2
 
 
 # TODO - Move this to a separate file?
@@ -107,6 +121,21 @@ def get_dataloaders(args):
         raise NotImplementedError(f"Implement dataloading logic for the \
             following dataset: {dataset_name}")
 
+    if args.use_pretrained:
+        print("Using pretrained model and transforms")
+        pretrained_transforms = ResNet18_Weights.IMAGENET1K_V1.transforms()
+        transform_labeledtrain = transforms.Compose([
+            transforms.Grayscale(num_output_channels=3),
+            pretrained_transforms,
+        ])
+        transform_eval = transforms.Compose([
+            transforms.Grayscale(num_output_channels=3),
+            pretrained_transforms,
+        ])
+
+    if args.implementation == 'MixUp':
+        transform_labeledtrain = TransformTwice(transform_labeledtrain)
+
     # Process unlabeled data
     if args.u_train_dataset_path != '':
         unlabel_dataset = UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
@@ -189,10 +218,23 @@ def get_model(args):
     logger.info(f"Initializing model architecture: {args.arch}")
 
     if args.arch == 'resnet18':
-        from torchvision import models
+        weights = ResNet18_Weights.DEFAULT if args.use_pretrained else None
+        model = resnet18(weights=weights)
 
-        model = models.resnet18(pretrained=args.use_pretrained)
+        # Freeze layers only if using a pretrained model
+        if args.use_pretrained and args.freeze_backbone:
+            print("Freezing layers")
+            for param in model.parameters():
+                param.requires_grad = False
+
+        # Replace the last fully connected layer
         model.fc = torch.nn.Linear(512, args.num_classes)
+        init.normal_(model.fc.weight, mean=0.0, std=0.0001)
+        init.zeros_(model.fc.bias)
+
+        # Ensure the new last layer is trainable
+        for param in model.fc.parameters():
+            param.requires_grad = True
 
     elif args.arch == 'wideresnet':
         import backbone.wideresnet as models
@@ -208,7 +250,12 @@ def get_model(args):
         raise NameError('Not implemented yet')
 
     # TODO - Implement other methods, this should dynamically load the method
-    return LabelOnlyBaseline(model, args)
+    if args.implementation == 'LabelOnlyBaseline':
+        return LabelOnlyBaseline(model, args)
+    elif args.implementation == 'MixUp':
+        return MixUp(model, args)
+    else:
+        raise NameError('Not implemented yet')
 
 
 def get_optimizer(args, model: torch.nn.Module):
@@ -223,17 +270,17 @@ def get_optimizer(args, model: torch.nn.Module):
     no_decay = ['bias', 'bn']
     grouped_parameters = [
         {'params': [p for n, p in model.named_parameters() if not any(
-            nd in n for nd in no_decay)], 'weight_decay': 0.01},
+            nd in n for nd in no_decay)], 'weight_decay': args.wd},
         {'params': [p for n, p in model.named_parameters() if any(
-            nd in n for nd in no_decay)], 'weight_decay': 0.0}
+            nd in n for nd in no_decay)], 'weight_decay': args.wd}
     ]
 
     if args.optimizer_type == 'SGD':
-        optimizer = optim.SGD(grouped_parameters, lr=0.1,
+        optimizer = optim.SGD(grouped_parameters, lr=args.lr,
                               momentum=0.9, nesterov=args.nesterov)
 
     elif args.optimizer_type == 'Adam':
-        optimizer = optim.Adam(grouped_parameters, lr=0.1)
+        optimizer = optim.Adam(grouped_parameters, lr=args.lr)
 
     else:
         raise NameError('Not supported optimizer setting')
@@ -285,7 +332,7 @@ def setup_training(args, method_config: HyperparamSpace):
         hyper_strs.append(f'{key}={value}')
 
     model_dir = "_".join(hyper_strs)
-    args.train_dir = os.path.join(args.train_dir, model_dir)
+    args.train_dir = os.path.join(args.base_train_dir, model_dir)
     os.makedirs(args.train_dir, exist_ok=True)
 
     # Load class weights
@@ -318,12 +365,20 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
     """
 
     model.train()
+    args.writer.add_scalar('train/lr', scheduler.get_last_lr()[0], epoch)
+    print(f"Epoch {epoch+1} - Learning Rate: {scheduler.get_last_lr()[0]}")
+
     batch_time, data_time, labeled_loss = AverageMeter(), AverageMeter(), AverageMeter()
+
+    all_logits = []
+    all_labels = []
+
     labeledtrain_iter = iter(train_loader)
     n_steps_per_epoch = args.nimg_per_epoch // args.labeledtrain_batchsize
     p_bar = tqdm(range(n_steps_per_epoch), disable=False)
 
     start_time = time.time()
+
     for batch_idx in range(n_steps_per_epoch):
         try:
             l_input, l_labels = next(labeledtrain_iter)
@@ -332,16 +387,27 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
             l_input, l_labels = next(labeledtrain_iter)
 
         data_time.update(time.time() - start_time)
-        l_input, l_labels = l_input.to(args.device).float(), l_labels.to(args.device).long()
+
+        # l_input, l_labels = l_input.to(args.device).float(), l_labels.to(args.device).long()
+
+        optimizer.zero_grad()  # Zero gradients before backward pass
 
         logits, loss, supervised_loss, unsupervised_loss = model.forward(
             l_input, l_labels, args.weights)
+
         total_loss = supervised_loss + (unsupervised_loss if unsupervised_loss is not None else 0)
+
+        # Accumulate logits & labels
+        all_logits.append(logits.detach().cpu())
+        all_labels.append(l_labels.detach().cpu())
+
+        # Weighted update for correct loss averaging
+        batch_size = l_labels.size(0)
+        labeled_loss.update(supervised_loss.item(), batch_size)
+
         total_loss.backward()
         optimizer.step()
-        model.zero_grad()
 
-        labeled_loss.update(supervised_loss.item())
         batch_time.update(time.time() - start_time)
         start_time = time.time()
 
@@ -350,7 +416,11 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
 
     p_bar.close()
     scheduler.step()
-    return labeled_loss.avg, logits, l_labels
+
+    all_logits = torch.cat(all_logits)
+    all_labels = torch.cat(all_labels)
+
+    return labeled_loss.avg, all_logits, all_labels
 
 
 def train(args, method_config):
@@ -365,13 +435,18 @@ def train(args, method_config):
         float: test accuracy
     """
 
+    start_time = time.time()
+
     model, optimizer, scheduler, train_loader, val_loader, test_loader = setup_training(
         args, method_config)
     writer = SummaryWriter(args.train_dir)
+    args.writer = writer
     best_val_acc, total_time = 0, 0
-    early_stopping = EarlyStopping(patience=args.patience)
+    current_count = 0  # for early stopping, when continue training
+    early_stopping = EarlyStopping(patience=args.patience, initial_count=current_count)
 
     for epoch in range(args.start_epoch, args.train_epoch):
+        start_time = time.time()
         train_loss, logits, labels = train_one_epoch(
             args, model, optimizer, scheduler, train_loader, epoch)
         train_pred = logits.cpu().detach().numpy().argmax(axis=1)
@@ -381,7 +456,13 @@ def train(args, method_config):
         # Validation
         val_metrics = eval_model(args, val_loader, model, args.weights)
 
+        if val_metrics['plain_accuracy'] > best_val_acc:
+            best_val_acc = val_metrics['plain_accuracy']
+
+        early_stopping(val_metrics['plain_accuracy'])
+
         # Logging
+        print(f"Epoch {epoch+1} - Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, ")
         writer.add_scalar('train/loss', train_loss, epoch)
         writer.add_scalar('train/accuracy', train_acc, epoch)
         writer.add_scalar('val/accuracy', val_metrics['plain_accuracy'], epoch)
@@ -402,11 +483,18 @@ def train(args, method_config):
             args.train_dir
         )
 
-        if early_stopping(val_metrics['plain_accuracy']):
-            print(f'Early stopping triggered at epoch {epoch}')
+        total_time += time.time() - start_time
+
+        print(f"Validation Accuracy: {val_metrics['plain_accuracy']:.4f}")
+        print(f"Early Stopping Count: {early_stopping.counter}")
+
+        if early_stopping.early_stop:
+            print("Early stopping")
             break
 
-        total_time += train_loss
+        if total_time >= args.total_hour * 3600:
+            print("Training time exceeded")
+            break
 
     # Final Testing
     test_metrics = eval_model(args, test_loader, model, args.weights)
@@ -416,6 +504,7 @@ def train(args, method_config):
     writer.add_scalar('test/balanced_accuracy', test_metrics['balanced_accuracy'], epoch)
     writer.add_scalar('test/auroc', test_metrics['auroc'], epoch)
     writer.add_scalar('test/auprc', test_metrics['auprc'], epoch)
+    writer.add_scalar('test/tpr_at_fpr_5', test_metrics['tpr_at_fpr_5'], epoch)
 
     with open(os.path.join(args.train_dir, 'training_summary.json'), 'w') as f:
         json.dump({'best_val_accuracy': best_val_acc, 'test_accuracy': test_acc,
@@ -426,8 +515,7 @@ def train(args, method_config):
 
 
 def main(args):
-    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    method_config = method_configs[args.method]
+    method_config = method_configs[args.implementation]
 
     # loop until desired duration has elapsed
     start_time = time.time()
@@ -446,6 +534,10 @@ if __name__ == "__main__":
 
     args = parse_args()
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
+    args.base_train_dir = args.train_dir
 
-    logger.info(f"Arguments: {vars(args)}")
+    print(f"Device: {args.device}")
+    print(f"Base Train Dir: {args.base_train_dir}")
+    print(f"Arguments: {vars(args)}")
+
     main(args)

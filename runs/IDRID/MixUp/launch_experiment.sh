@@ -23,18 +23,16 @@ export num_classes=5
 export use_pretrained=true
 export freeze_backbone=true
 export patience=20
-export implementation='LabelOnlyBaseline'
-
-export resume='last_checkpoint.pth.tar'
+export implementation='MixUp'
 
 # Experiment setting
 export dataset_name='IDRID'
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/$implementation/eval_test/"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/$implementation/linearprobing"
 
 mkdir -p $train_dir
 
-export script="src.hyper_search"  # Ensure this is set correctly
+export script="src.hyper_search"  
 
 export arch='resnet18'
 export train_epoch=200 
