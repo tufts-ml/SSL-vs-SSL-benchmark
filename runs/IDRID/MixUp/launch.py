@@ -37,7 +37,7 @@ launch_args = [
     "--arch resnet18",
 
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/launcher_testing_idrid_mixup",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/MixUp/pytorch",
 
     # optimization config
     "--train_epoch 100",

@@ -14,8 +14,7 @@ class MethodWrapper(nn.Module):
         self.args = args
         self.backbone.fc = nn.Linear(512, args.num_classes)
 
-    def forward(self, l_data, l_labels, u_data):
-        # TODO what is a more descriptive name for output? What are the shapes?
+    def forward(self, l_data, l_labels, u_data=None):
         """Forward pass for a learning method
 
         Args:
@@ -25,7 +24,7 @@ class MethodWrapper(nn.Module):
 
         Returns:
             tuple:
-                output: predictions of the model
+                class_probs: predictions of the model (batch_size, num_classes)
                 loss: loss value to get backpropagated
                 s_loss: loss value from supervised loss (0 if no supervised loss)
                 u_loss: loss value from unsupervised loss (0 if no unsupervised loss)
@@ -42,7 +41,7 @@ class MethodWrapper(nn.Module):
 
             Returns:
                 tuple:
-                    output: predictions of the model
+                    class_probs: predictions of the model (batch_size, num_classes)
                     loss: loss value 
             """
         raise NotImplementedError()
