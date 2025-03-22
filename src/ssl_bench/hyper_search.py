@@ -12,7 +12,8 @@ from tqdm import tqdm
 import torch.nn.init as init
 
 from ssl_bench.config import dataset_configs, method_configs, HyperparamSpace
-from ssl_bench.utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_schedule_with_warmup,
+from ssl_bench.utils.train_utils import (AverageMeter, save_checkpoint,
+                                         get_cosine_schedule_with_warmup,
                                          get_fixed_lr, EarlyStopping)
 from ssl_bench.utils.apply_clahe import apply_clahe
 from ssl_bench.utils.eval_utils import (
@@ -22,9 +23,21 @@ from ssl_bench.utils.eval_utils import (
 from ssl_bench.utils.arg_parser import parse_args
 from ssl_bench.methods.LabelOnlyBaseline import LabelOnlyBaseline
 from ssl_bench.methods.MixUp import MixUp
+from ssl_bench.methods.BarlowTwins import BarlowTwins
 from ssl_bench.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 
 # TODO - Move this to a separate file?
+
+
+class TransformTwice:
+    def __init__(self, transform_fn):
+        self.transform_fn = transform_fn
+
+    def __call__(self, x):
+        out1 = self.transform_fn(x)
+        out2 = self.transform_fn(x)
+
+        return out1, out2
 
 
 def get_dataloaders(args):
@@ -123,11 +136,14 @@ def get_dataloaders(args):
             pretrained_transforms,
         ])
 
+    # TODO - currently this transforms twice for BarlowTwins, will need to
+    # for other methods using unlabeled data
+
     # Process unlabeled data
     if args.u_train_dataset_path != '':
         unlabel_dataset = UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
-                                                   root_dir=args.root_dataset_path,
-                                                   transform=transform_labeledtrain)
+                                                   root_dir=args.u_root_dataset_path,
+                                                   transform=TransformTwice(transform_labeledtrain))
     else:
         unlabel_dataset = None
 
@@ -138,21 +154,21 @@ def get_dataloaders(args):
         dataset_class = LabeledImageCSVDataset
     if args.l_train_dataset_path != '':
         train_dataset = dataset_class(csv_file=args.l_train_dataset_path,
-                                      root_dir=args.root_dataset_path,
+                                      root_dir=args.l_root_dataset_path,
                                       transform=transform_labeledtrain)
     else:
         train_dataset = None
 
     if args.val_dataset_path != '':
         valid_dataset = dataset_class(csv_file=args.val_dataset_path,
-                                      root_dir=args.root_dataset_path,
+                                      root_dir=args.l_root_dataset_path,
                                       transform=transform_eval)
     else:
         valid_dataset = None
 
     if args.test_dataset_path != '':
         test_dataset = dataset_class(csv_file=args.test_dataset_path,
-                                     root_dir=args.root_dataset_path,
+                                     root_dir=args.l_root_dataset_path,
                                      transform=transform_eval)
     else:
         test_dataset = None
@@ -236,13 +252,18 @@ def get_model(args):
     else:
         raise NameError('Not implemented yet')
 
-    # TODO - Implement other methods, this should dynamically load the method
-    if args.implementation == 'LabelOnlyBaseline':
-        return LabelOnlyBaseline(model, args)
-    elif args.implementation == 'MixUp':
-        return MixUp(model, args)
-    else:
-        raise NameError('Not implemented yet')
+    implementation_map = {
+        'LabelOnlyBaseline': LabelOnlyBaseline,
+        'MixUp': MixUp,
+        'BarlowTwins': BarlowTwins,
+    }
+
+    model_class = implementation_map.get(args.implementation)
+
+    if model_class is None:
+        raise NameError(f"Invalid implementation: {args.implementation}")
+
+    return model_class(model, args)
 
 
 def get_optimizer(args, model: torch.nn.Module):
@@ -307,7 +328,7 @@ def setup_training(args, method_config: HyperparamSpace):
         ValueError: if dataset not found in config
 
     Returns:
-        tuple: model, optimizer, scheduler, train_loader, val_loader, test_loader
+        tuple: model, optimizer, scheduler, train_loader, unlabel_loader, val_loader, test_loader
     """
     if args.dataset_name not in dataset_configs:
         raise ValueError(f"Dataset {args.dataset_name} not found in config.")
@@ -329,12 +350,13 @@ def setup_training(args, method_config: HyperparamSpace):
     model = get_model(args).to(args.device)
     optimizer = get_optimizer(args, model)
     scheduler = get_lr_scheduler(optimizer, args)
-    train_loader, _, val_loader, test_loader = get_dataloaders(args)
+    train_loader, unlabel_loader, val_loader, test_loader = get_dataloaders(args)
 
-    return model, optimizer, scheduler, train_loader, val_loader, test_loader
+    return model, optimizer, scheduler, train_loader, unlabel_loader, val_loader, test_loader
 
 
-def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
+def train_one_epoch(args, model, optimizer, scheduler, train_loader,
+                    epoch, unlabel_loader=None):
     """Train model for one epoch
 
     Args:
@@ -343,6 +365,7 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
         optimizer (torch.optim.Optimizer): optimizer
         scheduler (torch.optim.lr_scheduler.LambdaLR): learning rate scheduler
         train_loader (torch.utils.data.DataLoader): training data loader
+        unlabel_loader (torch.utils.data.DataLoader): unlabeled data loader
         epoch (int): current epoch
 
     Returns:
@@ -375,8 +398,6 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
 
         data_time.update(time.time() - start_time)
 
-        # l_input, l_labels = l_input.to(args.device).float(), l_labels.to(args.device).long()
-
         optimizer.zero_grad()  # Zero gradients before backward pass
 
         logits, loss, supervised_loss, unsupervised_loss = model.forward(
@@ -384,7 +405,6 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
 
         total_loss = supervised_loss + (unsupervised_loss if unsupervised_loss is not None else 0)
 
-        # Accumulate logits & labels
         all_logits.append(logits.detach().cpu())
         all_labels.append(l_labels.detach().cpu())
 
@@ -410,6 +430,67 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
     return labeled_loss.avg, all_logits, all_labels
 
 
+def train_unlabel_one_epoch(args, model, optimizer, scheduler, train_loader,
+                            unlabel_loader, epoch):
+    """Train model for one epoch with unlabeled data
+
+    Args:
+        args (Namespace): parsed arguments
+        model (torch.nn.Module): model to train
+        optimizer (torch.optim.Optimizer): optimizer
+        scheduler (torch.optim.lr_scheduler.LambdaLR): learning rate scheduler
+        train_loader (torch.utils.data.DataLoader): training data loader
+        unlabel_loader (torch.utils.data.DataLoader): unlabeled data loader
+        epoch (int): current epoch
+
+    Returns:
+        float: average loss for the epoch
+        torch.Tensor: logits from the model
+    """
+    model.train()
+    args.writer.add_scalar('train/lr', scheduler.get_last_lr()[0], epoch)
+    print(f"Epoch {epoch+1} - Learning Rate: {scheduler.get_last_lr()[0]}")
+
+    batch_time, data_time, unlabeled_loss = AverageMeter(), AverageMeter(), AverageMeter()
+
+    unlabeled_train_iter = iter(unlabel_loader)
+    n_steps_per_epoch = len(unlabel_loader) // args.unlabeledtrain_batchsize
+
+    p_bar = tqdm(range(n_steps_per_epoch), disable=False)
+
+    start_time = time.time()
+
+    for batch_idx in range(n_steps_per_epoch):
+        try:
+            u_input = next(unlabeled_train_iter)
+        except StopIteration:
+            unlabeled_train_iter = iter(unlabel_loader)
+            u_input = next(unlabeled_train_iter)
+
+        data_time.update(time.time() - start_time)
+
+        optimizer.zero_grad()
+
+        _, loss, _, _ = model.forward(u_input)
+
+        batch_size = u_input.size(0)
+        unlabeled_loss.update(loss.item(), batch_size)
+
+        loss.backward()
+        optimizer.step()
+
+        batch_time.update(time.time() - start_time)
+        start_time = time.time()
+
+        p_bar.set_description(f"Epoch {epoch+1} - Loss: {unlabeled_loss.avg:.4f}")
+        p_bar.update()
+
+    p_bar.close()
+    scheduler.step()
+
+    return unlabeled_loss.avg, None, None
+
+
 def train(args, method_config):
     """ Train model
 
@@ -424,8 +505,8 @@ def train(args, method_config):
 
     start_time = time.time()
 
-    model, optimizer, scheduler, train_loader, val_loader, test_loader = setup_training(
-        args, method_config)
+    model, optimizer, scheduler, train_loader, unlabel_loader, \
+        val_loader, test_loader = setup_training(args, method_config)
     writer = SummaryWriter(args.train_dir)
     args.writer = writer
     best_val_acc, total_time = 0, 0
@@ -434,8 +515,16 @@ def train(args, method_config):
 
     for epoch in range(args.start_epoch, args.train_epoch):
         start_time = time.time()
-        train_loss, logits, labels = train_one_epoch(
-            args, model, optimizer, scheduler, train_loader, epoch)
+
+        if unlabel_loader is not None:
+            train_loss, logits, labels = train_unlabel_one_epoch(
+                args, model, optimizer, scheduler, train_loader, unlabel_loader, epoch)
+
+            print("Trained one epoch with unlabeled data")
+        else:
+            train_loss, logits, labels = train_one_epoch(
+                args, model, optimizer, scheduler, train_loader, epoch)
+
         train_pred = logits.cpu().detach().numpy().argmax(axis=1)
         train_targets = labels.cpu().detach().numpy()
         train_acc = calculate_plain_accuracy(train_pred, train_targets)
