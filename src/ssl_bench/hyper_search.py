@@ -11,32 +11,22 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import torch.nn.init as init
 
-from src.config import dataset_configs, method_configs, HyperparamSpace
-from src.utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_schedule_with_warmup,
-                                   get_fixed_lr, EarlyStopping)
-from src.utils.apply_clahe import apply_clahe
-from src.utils.eval_utils import (
+from ssl_bench.config import dataset_configs, method_configs, HyperparamSpace
+from ssl_bench.utils.train_utils import (AverageMeter, save_checkpoint, get_cosine_schedule_with_warmup,
+                                         get_fixed_lr, EarlyStopping)
+from ssl_bench.utils.apply_clahe import apply_clahe
+from ssl_bench.utils.eval_utils import (
     calculate_plain_accuracy,
     eval_model,
 )
-from src.utils.arg_parser import parse_args
-from src.methods.LabelOnlyBaseline import LabelOnlyBaseline
-from src.methods.MixUp import MixUp
-from src.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
-
-
-class TransformTwice:
-    def __init__(self, transform_fn):
-        self.transform_fn = transform_fn
-
-    def __call__(self, x):
-        out1 = self.transform_fn(x)
-        out2 = self.transform_fn(x)
-
-        return out1, out2
-
+from ssl_bench.utils.arg_parser import parse_args
+from ssl_bench.methods.LabelOnlyBaseline import LabelOnlyBaseline
+from ssl_bench.methods.MixUp import MixUp
+from ssl_bench.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 
 # TODO - Move this to a separate file?
+
+
 def get_dataloaders(args):
     """Get DataLoaders
 
@@ -132,9 +122,6 @@ def get_dataloaders(args):
             transforms.Grayscale(num_output_channels=3),
             pretrained_transforms,
         ])
-
-    if args.implementation == 'MixUp':
-        transform_labeledtrain = TransformTwice(transform_labeledtrain)
 
     # Process unlabeled data
     if args.u_train_dataset_path != '':
@@ -393,7 +380,7 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
         optimizer.zero_grad()  # Zero gradients before backward pass
 
         logits, loss, supervised_loss, unsupervised_loss = model.forward(
-            l_input, l_labels, args.weights)
+            l_input, l_labels)
 
         total_loss = supervised_loss + (unsupervised_loss if unsupervised_loss is not None else 0)
 
