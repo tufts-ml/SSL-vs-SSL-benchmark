@@ -25,7 +25,7 @@ launch_args = [
     "--l_train_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Labels/train.csv",
     "--val_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Labels/validation.csv",
     "--test_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Labels/test.csv",
-    "--root_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Images",
+    "--l_root_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Images",
 
     # DataLoader config
     "--labeledtrain_batchsize 32",
@@ -33,16 +33,16 @@ launch_args = [
 
     # model config
     # "--freeze_backbone",
-    "--use_pretrained",
+    # "--use_pretrained",
     "--arch resnet18",
 
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/MixUp/pytorch",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/MixUp/Final/base",
 
     # optimization config
     "--train_epoch 100",
     "--start_epoch 0",
-    "--total_hour 1",
+    "--total_hour 24",
     "--optimizer_type Adam",
     "--lr_warmup_epochs 0",
     "--lr_schedule_type CosineLR",
