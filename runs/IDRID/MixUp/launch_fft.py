@@ -11,14 +11,14 @@ slurm_args = [
     "--ntasks=1",
     "--cpus-per-task=8",
     "--mem-per-cpu=2G",
-    "--time=2:00:00",
+    "--time=24:00:00",
     "--partition=hugheslab",
     "--gres=gpu:rtx_6000:1",
 ]
 
 launch_args = [
     # method to use
-    "--implementation LabelOnlyBaseline",
+    "--implementation MixUp",
 
     # IDRID config
     "--dataset_name IDRID",
@@ -32,17 +32,17 @@ launch_args = [
     "--num_workers 8",
 
     # model config
-    "--freeze_backbone",
+    # "--freeze_backbone",
     "--use_pretrained",
     "--arch resnet18",
 
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/launcher_testing_idrid",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/MixUp/Final/fft",
 
     # optimization config
     "--train_epoch 100",
     "--start_epoch 0",
-    "--total_hour 1",
+    "--total_hour 24",
     "--optimizer_type Adam",
     "--lr_warmup_epochs 0",
     "--lr_schedule_type CosineLR",
