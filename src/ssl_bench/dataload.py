@@ -104,7 +104,7 @@ def get_dataloaders(args):
     # Process unlabeled data
     if args.u_train_dataset_path != '':
         unlabel_dataset = UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
-                                                   root_dir=args.root_dataset_path,
+                                                   root_dir=args.u_root_dataset_path,
                                                    transform=transform_labeledtrain)
     else:
         unlabel_dataset = None
@@ -116,21 +116,21 @@ def get_dataloaders(args):
         dataset_class = LabeledImageCSVDataset
     if args.l_train_dataset_path != '':
         train_dataset = dataset_class(csv_file=args.l_train_dataset_path,
-                                      root_dir=args.root_dataset_path,
+                                      root_dir=args.l_root_dataset_path,
                                       transform=transform_labeledtrain)
     else:
         train_dataset = None
 
     if args.val_dataset_path != '':
         valid_dataset = dataset_class(csv_file=args.val_dataset_path,
-                                      root_dir=args.root_dataset_path,
+                                      root_dir=args.l_root_dataset_path,
                                       transform=transform_eval)
     else:
         valid_dataset = None
 
     if args.test_dataset_path != '':
         test_dataset = dataset_class(csv_file=args.test_dataset_path,
-                                     root_dir=args.root_dataset_path,
+                                     root_dir=args.l_root_dataset_path,
                                      transform=transform_eval)
     else:
         test_dataset = None

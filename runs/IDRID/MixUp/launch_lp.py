@@ -25,7 +25,7 @@ launch_args = [
     "--l_train_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Labels/train.csv",
     "--val_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Labels/validation.csv",
     "--test_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Labels/test.csv",
-    "--root_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Images",
+    "--l_root_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Images",
 
     # DataLoader config
     "--labeledtrain_batchsize 32",
