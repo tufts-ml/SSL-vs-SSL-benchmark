@@ -3,149 +3,22 @@ import logging
 import os
 import time
 
-from torchvision.models import resnet18, ResNet18_Weights
+
 import torch
-import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
-import torch.nn.init as init
+
 
 from ssl_bench.config import dataset_configs, method_configs, HyperparamSpace
 from ssl_bench.dataload import get_dataloaders
 from ssl_bench.utils.train_utils import (AverageMeter, save_checkpoint,
-                                         get_cosine_schedule_with_warmup,
-                                         get_fixed_lr, EarlyStopping)
+                                         EarlyStopping, get_model,
+                                         get_optimizer, get_lr_scheduler)
 from ssl_bench.utils.eval_utils import (
     calculate_plain_accuracy,
     eval_model,
 )
 from ssl_bench.utils.arg_parser import parse_args
-from ssl_bench.methods import (
-    LabelOnlyBaseline,
-    MixUp,
-    BarlowTwins,
-)
-
-# TODO - Move this to a separate file?
-
-
-class TransformTwice:
-    def __init__(self, transform_fn):
-        self.transform_fn = transform_fn
-
-    def __call__(self, x):
-        out1 = self.transform_fn(x)
-        out2 = self.transform_fn(x)
-
-        return out1, out2
-
-
-def get_model(args):
-    """Get neural network model
-
-    Args:
-        args (Namespace): parsed arguments
-
-    Returns:
-        torch.nn.Module: model specified by args
-    """
-    logger.info(f"Initializing model architecture: {args.arch}")
-
-    if args.arch == 'resnet18':
-        weights = ResNet18_Weights.DEFAULT if args.use_pretrained else None
-        model = resnet18(weights=weights)
-
-        # Freeze layers only if using a pretrained model
-        if args.use_pretrained and args.freeze_backbone:
-            print("Freezing layers")
-            for param in model.parameters():
-                param.requires_grad = False
-
-        # Replace the last fully connected layer
-        model.fc = torch.nn.Linear(512, args.num_classes)
-        init.normal_(model.fc.weight, mean=0.0, std=0.0001)
-        init.zeros_(model.fc.bias)
-
-        # Ensure the new last layer is trainable
-        for param in model.fc.parameters():
-            param.requires_grad = True
-
-    elif args.arch == 'wideresnet':
-        import backbone.wideresnet as models
-        model_depth = 28
-        model_width = 2
-
-        model = models.build_wideresnet(depth=model_depth,
-                                        widen_factor=model_width,
-                                        dropout=0.0,
-                                        num_classes=args.num_classes)
-
-    else:
-        raise NameError('Not implemented yet')
-
-    implementation_map = {
-        'LabelOnlyBaseline': LabelOnlyBaseline,
-        'MixUp': MixUp,
-        'BarlowTwins': BarlowTwins,
-    }
-
-    model_class = implementation_map.get(args.implementation)
-
-    if model_class is None:
-        raise NameError(f"Invalid implementation: {args.implementation}")
-
-    return model_class(model, args)
-
-
-def get_optimizer(args, model: torch.nn.Module):
-    """Get optimizer for learning
-
-    Args:
-        args (Namespace): parsed arguments
-
-    Returns:
-        torch.optim.Optimizer: optimizer specified by args
-    """
-    no_decay = ['bias', 'bn']
-    grouped_parameters = [
-        {'params': [p for n, p in model.named_parameters() if not any(
-            nd in n for nd in no_decay)], 'weight_decay': args.wd},
-        {'params': [p for n, p in model.named_parameters() if any(
-            nd in n for nd in no_decay)], 'weight_decay': args.wd}
-    ]
-
-    if args.optimizer_type == 'SGD':
-        optimizer = optim.SGD(grouped_parameters, lr=args.lr,
-                              momentum=0.9, nesterov=args.nesterov)
-
-    elif args.optimizer_type == 'Adam':
-        optimizer = optim.Adam(grouped_parameters, lr=args.lr)
-
-    else:
-        raise NameError('Not supported optimizer setting')
-
-    return optimizer
-
-
-def get_lr_scheduler(optimizer, args):
-    """Get learning rate scheduler
-
-    Args:
-        optimizer (torch.optim.Optimizer): optimizer
-        args (Namespace): parsed arguments
-
-    Returns:
-        torch.optim.lr_scheduler.LambdaLR: learning rate scheduler
-    """
-    if args.lr_schedule_type == 'CosineLR':
-        scheduler = get_cosine_schedule_with_warmup(
-            optimizer, args.lr_warmup_epochs, args.lr_cycle_epochs)
-    elif args.lr_schedule_type == 'FixedLR':
-        scheduler = get_fixed_lr(optimizer, args.lr_warmup_epochs, args.lr_cycle_epochs)
-    else:
-        raise NameError('Invalid lr_schedule_type')
-
-    return scheduler
 
 
 def setup_training(args, method_config: HyperparamSpace):
