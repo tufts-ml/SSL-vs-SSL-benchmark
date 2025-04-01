@@ -7,8 +7,7 @@ import math
 from torch.optim.lr_scheduler import LambdaLR
 from torchvision.models import resnet18, ResNet18_Weights
 import torch.nn.init as init
-from ssl_bench.methods.LabelOnlyBaseline import LabelOnlyBaseline
-from ssl_bench.methods.MixUp import MixUp
+from ssl_bench.methods import LabelOnlyBaseline, MixUp, BarlowTwins
 import torch.optim as optim
 
 
@@ -141,12 +140,18 @@ def get_model(args):
     else:
         raise NameError('Not implemented yet')
 
-    if args.implementation == 'LabelOnlyBaseline':
-        return LabelOnlyBaseline(model, args)
-    elif args.implementation == 'MixUp':
-        return MixUp(model, args)
-    else:
-        raise NameError('Not implemented yet')
+    implementation_map = {
+        'LabelOnlyBaseline': LabelOnlyBaseline,
+        'MixUp': MixUp,
+        'BarlowTwins': BarlowTwins,
+    }
+
+    model_class = implementation_map.get(args.implementation)
+
+    if model_class is None:
+        raise NameError(f"Invalid implementation: {args.implementation}")
+
+    return model_class(model, args)
 
 
 def get_optimizer(args, model: torch.nn.Module):
