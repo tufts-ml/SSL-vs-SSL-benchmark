@@ -6,11 +6,13 @@ from PIL import Image
 LABELED = False
 
 # Input Pickle File
-pkl_file = "/cluster/tufts/hugheslab/datasets/AIROGS/train.pkl"
+pkl_file = "/cluster/tufts/hugheslab/datasets/AIROGS/unlabeled.pkl"
+file_size = os.path.getsize(pkl_file)
+print(f"Pickle file size: {file_size / (1024**3)} GB")
 
 # Output Paths
 output_folder = "/cluster/tufts/hugheslab/datasets/AIROGS/Images"
-csv_file = "/cluster/tufts/hugheslab/datasets/AIROGS/train.csv"
+csv_file = "/cluster/tufts/hugheslab/datasets/AIROGS/unlabled.csv"
 
 # Create the Images directory if it doesn't exist
 os.makedirs(output_folder, exist_ok=True)
@@ -28,12 +30,15 @@ with open(csv_file, mode='w', newline='') as f:
     writer.writerow(["filename"])  # CSV header (no labels)
 
     for idx, image in enumerate(images):
-        img_filename = f"train_{idx:05d}.png"  # Example: 'train_00000.png'
+        if idx > 5000:
+            break
+
+        img_filename = f"unlabeled{idx:05d}.png"  # Example: 'train_00000.png'
         img_path = os.path.join(output_folder, img_filename)
 
         # Convert NumPy array to a PIL image
         image = Image.fromarray(image)
-        
+
         if LABELED:
             image_label = data['labels'][idx]
 

@@ -1,23 +1,31 @@
-import torch.nn as nn
+from ssl_bench.methods.MethodWrapper import MethodWrapper
 from lightly.models.modules import BarlowTwinsProjectionHead
 from lightly.loss import BarlowTwinsLoss
 
 
-class BarlowTwins(nn.Module):
-    def __init__(self, backbone, projection_dim=2048, lambd=5e-3):
-        super(BarlowTwins, self).__init__()
+class BarlowTwins(MethodWrapper):
+    def __init__(self, backbone, args):
+        super(BarlowTwins, self).__init__(backbone, args)  # Pass required arguments
         self.backbone = backbone
-        self.projection_head = BarlowTwinsProjectionHead(512, 2048, 2048)
-        self.barlow_twins_loss = BarlowTwinsLoss()
+        self.projection_head = BarlowTwinsProjectionHead(
+            512, 2048, 2048)
+        self.barlow_twins_loss = BarlowTwinsLoss(
+            lambda_param=args.lambd if hasattr(args, 'lambd') else 5e-3)
 
     def forward(self, l_data, l_labels, u_data):
         self.backbone.train()
 
         u1, u2 = u_data
-        z1 = self.backbone(u1)
-        z2 = self.backbone(u2)
-        z1 = self.projection_head(z1)
-        z2 = self.projection_head(z2)
+        device = next(self.backbone.parameters()).device  # Get the device of the model
+
+        u1, u2 = u1.to(device), u2.to(device)  # Move inputs to the correct device
+
+        z1_features = self.backbone(u1)
+        z2_features = self.backbone(u2)
+
+        z1 = self.projection_head(z1_features)
+        z2 = self.projection_head(z2_features)
+
         loss = self.barlow_twins_loss(z1, z2)
 
         return None, loss, 0, loss
@@ -25,7 +33,8 @@ class BarlowTwins(nn.Module):
     def eval_forward(self, l_data, l_labels):
         self.backbone.eval()
 
-        z1 = self.backbone(l_data)
-        z1 = self.projection_head(z1)
+        device = next(self.backbone.parameters()).device
+        l_data = l_data.to(device)
 
-        return None, None, z1
+        z1 = self.projection_head(self.backbone(l_data))
+        return z1, 0

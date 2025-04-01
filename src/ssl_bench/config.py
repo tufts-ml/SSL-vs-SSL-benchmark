@@ -70,9 +70,6 @@ method_configs = {
     'BarlowTwins': HyperparamSpace({
         "lr": loguniform(1e-5, 1e-2),
         "wd": loguniform(1e-6, 1e-3),
-        "batch_size": loguniform(8, 512),
-        "scale_loss": loguniform(1e-5, 1e-2),
-        "projection_dim": loguniform(32, 512),
-        "num_crops": loguniform(2, 8),
+        "lambd": loguniform(1e-3, 1e-2),
     }),
 }
