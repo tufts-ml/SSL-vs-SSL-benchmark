@@ -31,11 +31,12 @@ launch_args = [
 
     # DataLoader config
     "--labeledtrain_batchsize 32",
+    "--unlabeledtrain_batchsize 128",
     "--num_workers 8",
 
     # model config
-    "--freeze_backbone",
-    "--use_pretrained",
+    # "--freeze_backbone",
+    # "--use_pretrained",
     "--arch resnet18",
 
     # output location

@@ -116,7 +116,7 @@ def get_dataloaders(args):
     if args.u_train_dataset_path != '':
         unlabel_dataset = UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
                                                    root_dir=args.u_root_dataset_path,
-                                                   transform=transform_labeledtrain)
+                                                   transform=TransformTwice(transform_labeledtrain))
     else:
         unlabel_dataset = None
 
@@ -154,6 +154,7 @@ def get_dataloaders(args):
                                                pin_memory=True,
                                                drop_last=True)
     if unlabel_dataset is not None:
+        print("Length of unlabeled dataset: ", len(unlabel_dataset))
         unlabel_loader = torch.utils.data.DataLoader(unlabel_dataset,
                                                      batch_size=args.unlabeledtrain_batchsize,
                                                      shuffle=True,

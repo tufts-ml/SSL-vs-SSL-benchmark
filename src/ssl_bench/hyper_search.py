@@ -134,16 +134,15 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader,
     return labeled_loss.avg, all_logits, all_labels
 
 
-def train_unlabel_one_epoch(args, model, optimizer, scheduler, train_loader,
-                            unlabel_loader, epoch):
-    """Train model for one epoch with unlabeled data
+def train_unlabeled_one_epoch(args, model, optimizer, scheduler, unlabel_loader,
+                              epoch):
+    """Train model for one epoch of unlabled data
 
     Args:
         args (Namespace): parsed arguments
         model (torch.nn.Module): model to train
         optimizer (torch.optim.Optimizer): optimizer
         scheduler (torch.optim.lr_scheduler.LambdaLR): learning rate scheduler
-        train_loader (torch.utils.data.DataLoader): training data loader
         unlabel_loader (torch.utils.data.DataLoader): unlabeled data loader
         epoch (int): current epoch
 
@@ -151,48 +150,53 @@ def train_unlabel_one_epoch(args, model, optimizer, scheduler, train_loader,
         float: average loss for the epoch
         torch.Tensor: logits from the model
     """
+
     model.train()
     args.writer.add_scalar('train/lr', scheduler.get_last_lr()[0], epoch)
     print(f"Epoch {epoch+1} - Learning Rate: {scheduler.get_last_lr()[0]}")
 
     batch_time, data_time, unlabeled_loss = AverageMeter(), AverageMeter(), AverageMeter()
 
-    unlabeled_train_iter = iter(unlabel_loader)
-    n_steps_per_epoch = len(unlabel_loader) // args.unlabeledtrain_batchsize
-
+    unlabeledtrain_iter = iter(unlabel_loader)
+    # TODO: fix below for unlabeled data
+    n_steps_per_epoch = 600 // args.unlabeledtrain_batchsize
     p_bar = tqdm(range(n_steps_per_epoch), disable=False)
 
     start_time = time.time()
 
     for batch_idx in range(n_steps_per_epoch):
         try:
-            u_input = next(unlabeled_train_iter)
+            u_input = next(unlabeledtrain_iter)
         except StopIteration:
-            unlabeled_train_iter = iter(unlabel_loader)
-            u_input = next(unlabeled_train_iter)
+            unlabeledtrain_iter = iter(unlabel_loader)
+            u_input = next(unlabeledtrain_iter)
 
         data_time.update(time.time() - start_time)
 
-        optimizer.zero_grad()
+        optimizer.zero_grad()  # Zero gradients before backward pass
 
-        _, loss, _, _ = model.forward(u_input)
+        _, _, _, unsupervised_loss = model.forward(
+            None, None, u_input)
 
-        batch_size = u_input.size(0)
-        unlabeled_loss.update(loss.item(), batch_size)
+        total_loss = unsupervised_loss
 
-        loss.backward()
+        # Weighted update for correct loss averaging
+        batch_size = len(u_input)
+        unlabeled_loss.update(unsupervised_loss.item(), batch_size)
+
+        total_loss.backward()
         optimizer.step()
 
         batch_time.update(time.time() - start_time)
         start_time = time.time()
 
-        p_bar.set_description(f"Epoch {epoch+1} - Loss: {unlabeled_loss.avg:.4f}")
+        p_bar.set_description(f"Epoch {epoch+1} - Unlabeled Loss: {unlabeled_loss.avg:.4f}")
         p_bar.update()
 
     p_bar.close()
     scheduler.step()
 
-    return unlabeled_loss.avg, None, None
+    return unlabeled_loss.avg
 
 
 def train(args, method_config):
@@ -217,15 +221,46 @@ def train(args, method_config):
     current_count = 0  # for early stopping, when continue training
     early_stopping = EarlyStopping(patience=args.patience, initial_count=current_count)
 
+    classifier = None
+    classifier_optimizer = None
+
+    if args.implementation == 'BarlowTwins':
+        classifier = torch.nn.Linear(2048, args.num_classes).to(args.device)
+        classifier_optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-3)
+
     for epoch in range(args.start_epoch, args.train_epoch):
         start_time = time.time()
 
-        if unlabel_loader is not None:
-            train_loss, logits, labels = train_unlabel_one_epoch(
-                args, model, optimizer, scheduler, train_loader, unlabel_loader, epoch)
+        if classifier is not None:
+            ssl_loss = train_unlabeled_one_epoch(
+                args, model, optimizer, scheduler, unlabel_loader, epoch)
+            print(f"Epoch {epoch+1} - Unlabeled Loss: {ssl_loss:.4f}")
 
-            print("Trained one epoch with unlabeled data")
+            # Train classifier
+            model.eval()
+            classifier.train()
+
+            logits = []
+            labels = []
+
+            for batch_idx, (l_input, l_labels) in enumerate(train_loader):
+                l_input, l_labels = l_input.to(args.device), l_labels.to(args.device)
+                classifier_optimizer.zero_grad()
+                with torch.no_grad():
+                    features = model.eval_forward(l_input, l_labels)[0]
+                batch_logits = classifier(features) 
+                loss = torch.nn.functional.cross_entropy(batch_logits, l_labels)
+                loss.backward()
+                classifier_optimizer.step()
+
+                logits.append(batch_logits.detach().cpu())  # Append tensor to list
+                labels.append(l_labels.detach().cpu())
+
+            logits = torch.cat(logits)  # Convert list of tensors back to a single tensor
+            labels = torch.cat(labels)
+            train_loss = torch.nn.functional.cross_entropy(logits, labels).item()
         else:
+            # Train model
             train_loss, logits, labels = train_one_epoch(
                 args, model, optimizer, scheduler, train_loader, epoch)
 
@@ -234,7 +269,7 @@ def train(args, method_config):
         train_acc = calculate_plain_accuracy(train_pred, train_targets)
 
         # Validation
-        val_metrics = eval_model(args, val_loader, model, args.weights)
+        val_metrics = eval_model(args, val_loader, model, args.weights, classifier)
 
         if val_metrics['plain_accuracy'] > best_val_acc:
             best_val_acc = val_metrics['plain_accuracy']
