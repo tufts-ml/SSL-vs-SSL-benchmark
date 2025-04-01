@@ -7,6 +7,17 @@ from ssl_bench.utils.apply_clahe import apply_clahe
 from ssl_bench.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 
 
+class TransformTwice:
+    def __init__(self, transform_fn):
+        self.transform_fn = transform_fn
+
+    def __call__(self, x):
+        out1 = self.transform_fn(x)
+        out2 = self.transform_fn(x)
+
+        return out1, out2
+
+
 def get_dataloaders(args):
     """Get DataLoaders
 
