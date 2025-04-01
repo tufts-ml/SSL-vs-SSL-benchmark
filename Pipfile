@@ -17,7 +17,6 @@ name = "pytorch_cu121"
 matplotlib = "*"
 numpy = "*"
 autopep8 = "*"
-flake8 = "*"
 pep8-naming = "*"
 pytest = "*"
 seaborn = "*"
@@ -25,6 +24,9 @@ tensorboard = "*"
 scikit-learn = "*"
 pandas = "*"
 tqdm = "*"
+ray = "*"
+flake8 = "*"
+ssl-bench = {file = ".", editable = true}
 
 [torch_cpu]
 torch = {index="pytorch_cpu"}
@@ -36,3 +38,6 @@ torchvision = {index="pytorch_cu121"}
 
 [requires]
 python_version = "3.10"
+
+[dev-packages]
+torch-tb-profiler = "*"

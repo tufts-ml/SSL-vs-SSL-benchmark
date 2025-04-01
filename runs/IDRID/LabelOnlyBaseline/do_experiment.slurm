@@ -2,9 +2,9 @@
 #SBATCH --job-name=hyper_search
 #SBATCH --output=experiment_output_%j.log
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem-per-cpu=2G
-#SBATCH --time=50:00:00  # Adjust as needed
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=16G
+#SBATCH --time=24:00:00  # Adjust as needed
 #SBATCH --partition=hugheslab
 #SBATCH --gres=gpu:rtx_6000:1
 
@@ -18,7 +18,7 @@ source /cluster/home/ljain01/.local/share/virtualenvs/SSL-vs-SSL-benchmark-za0Nt
 export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
 
 # Running the Python script with parameters
-python -m $script \
+python -m src.hyper_search \
     --implementation $implementation \
     --dataset_name $dataset_name \
     --l_train_dataset_path $l_train_dataset_path \
@@ -28,10 +28,10 @@ python -m $script \
     --labeledtrain_batchsize $labeledtrain_batchsize \
     --num_workers $num_workers \
     --arch $arch \
+    --use_pretrained \
+    --freeze_backbone \
     --train_epoch $train_epoch \
     --start_epoch $start_epoch \
-    --freeze_backbone \
-    --use_pretrained \
     --total_hour $total_hour \
     --train_dir $train_dir \
     --lr_warmup_epochs $lr_warmup_epochs \
