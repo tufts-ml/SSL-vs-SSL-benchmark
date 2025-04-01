@@ -12,7 +12,10 @@ def parse_args():
     parser.add_argument('--u_train_dataset_path', default='', type=str)
     parser.add_argument('--val_dataset_path', default='', type=str)
     parser.add_argument('--test_dataset_path', default='', type=str)
-    parser.add_argument('--root_dataset_path', default='', type=str)
+    # dataset root paths for labeled and unlabeled datasets
+    parser.add_argument('--l_root_dataset_path', default='', type=str)
+    parser.add_argument('--u_root_dataset_path', default='', type=str)
+
     # data loading settings
     parser.add_argument('--labeledtrain_batchsize', default=128, type=int)
     parser.add_argument('--unlabeledtrain_batchsize', default=128, type=int)
