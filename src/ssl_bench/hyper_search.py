@@ -1,3 +1,4 @@
+import cProfile
 import json
 import logging
 import os
@@ -23,6 +24,7 @@ from ssl_bench.utils.arg_parser import parse_args
 from ssl_bench.methods.LabelOnlyBaseline import LabelOnlyBaseline
 from ssl_bench.methods.MixUp import MixUp
 from ssl_bench.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
+from sklearn.metrics import confusion_matrix
 
 # TODO - Move this to a separate file?
 
@@ -333,7 +335,7 @@ def setup_training(args, method_config: HyperparamSpace):
 
     return model, optimizer, scheduler, train_loader, val_loader, test_loader
 
-import cProfile
+
 def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
     """Train model for one epoch
 
@@ -407,18 +409,31 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
     all_logits = torch.cat(all_logits)
     all_labels = torch.cat(all_labels)
 
-    for epoch in range(args.start_epoch, args.train_epoch):
-        pr = cProfile.Profile()
-        pr.enable()
-        train_loss, logits, labels = train_one_epoch(
-            args, model, optimizer, scheduler, train_loader, epoch)
-        pr.disable()
-        pr.dump_stats("latest.stats")
-        stats = Stats(pr)
-        stats.sort_stats("tottime").print_stats(25)
-        pr.print_stats(sort='time')
+    # for epoch in range(args.start_epoch, args.train_epoch):
+    #     pr = cProfile.Profile()
+    #     pr.enable()
+    #     train_loss, logits, labels = train_one_epoch(
+    #         args, model, optimizer, scheduler, train_loader, epoch)
+    #     pr.disable()
+    #     pr.dump_stats("latest.stats")
+    #     stats = Stats(pr)
+    #     stats.sort_stats("tottime").print_stats(25)
+    #     pr.print_stats(sort='time')
 
     return labeled_loss.avg, all_logits, all_labels
+
+def plot_confusion_matrix(cm, class_names):
+    fig, ax = plt.subplots(figsize=(6, 6))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    image = Image.open(buf)
+    image = np.array(image)
+    plt.close(fig)
+    return image
 
 
 def train(args, method_config):

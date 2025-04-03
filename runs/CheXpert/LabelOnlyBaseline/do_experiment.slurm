@@ -11,14 +11,14 @@
 # module load python/3.8.5  # Example
 
 # Activate the virtual environment
-source /cluster/home/abaran03/.local/share/virtualenvs/SSL-vs-SSL-benchmark-za0Nt4Ck/bin/activate
+source /cluster/home/abaran03/.local/share/virtualenvs/SSL-vs-SSL-benchmark-2JwcXsi7/bin/activate
 
 # Export environment variables
-export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
+export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH/src"
 
 
 # Running the Python script with parameters
-python3 -m src.hyper_search \
+python3 -m ssl_bench.hyper_search \
     --implementation $method \
     --dataset_name $dataset_name \
     --l_train_dataset_path $l_train_dataset_path \

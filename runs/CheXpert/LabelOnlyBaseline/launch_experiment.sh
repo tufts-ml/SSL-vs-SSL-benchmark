@@ -7,7 +7,7 @@
 # where ACTION_NAME is either 'list', 'submit', or 'run_here'
 
 export ROOT_PATH='/cluster/tufts/hugheslab/abaran03/SSL-vs-SSL-benchmark'
-export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
+export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH/src"
 
 if [[ -z $1 ]]; then
     ACTION_NAME='list'
@@ -18,10 +18,10 @@ fi
 # Set up environment variables
 export resized_shape=384
 export num_workers=4
-export total_hour=10
+export total_hour=25
 export num_classes=2
 export use_pretrained=""
-export patience=20
+export patience=200
 
 export method='LabelOnlyBaseline'
 export resume='last_checkpoint.pth.tar'
@@ -31,12 +31,12 @@ export dataset_name='CheXpert2'
 export data_seed=0
 export training_seed=0
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/binary25h/data_seed$data_seed/training_seed$training_seed/$implementation/pretrained$use_pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/bin_at25h/data_seed$data_seed/training_seed$training_seed/$implementation/pretrained$use_pretrained"
 echo "Training directory: $train_dir"
 
 mkdir -p $train_dir
 
-export script="src.hyper_search"
+export script="ssl_bench.hyper_search"
 
 export arch='resnet18'
 export train_epoch=200 
