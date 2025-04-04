@@ -42,6 +42,7 @@ def setup_training(args, method_config: HyperparamSpace):
     for key, value in method_config.rvs().items():
         setattr(args, key, value)
         hyper_strs.append(f'{key}={value}')
+    logging.info(f"Hypers: {hyper_strs}")
 
     model_dir = "_".join(hyper_strs)
     args.train_dir = os.path.join(args.base_train_dir, model_dir)
@@ -147,7 +148,6 @@ def train(args, method_config):
         float: best validation accuracy
         float: test accuracy
     """
-
     start_time = time.time()
 
     model, optimizer, scheduler, train_loader, val_loader, test_loader = setup_training(
@@ -229,6 +229,9 @@ def train(args, method_config):
 
 def main(args):
     method_config = method_configs[args.implementation]
+    log_path = os.path.join(args.train_dir, 'logging.log')
+    logging.basicConfig(filename=log_path, encoding='utf-8', level=logging.INFO)
+    logging.info(f"Args: {args}")
 
     # loop until desired duration has elapsed
     start_time = time.time()
