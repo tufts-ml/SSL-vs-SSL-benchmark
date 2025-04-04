@@ -5,6 +5,8 @@
 # $ bash launch_experiments.sh ACTION_NAME
 #
 # where ACTION_NAME is either 'list' or 'submit' or 'run_here'
+export ROOT_PATH='/cluster/tufts/hugheslab/nfalic01/SSL-vs-SSL-benchmark'
+export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
 
 export ROOT_PATH='/cluster/tufts/hugheslab/nfalic01/SSL-vs-SSL-benchmark'
 export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
@@ -15,45 +17,37 @@ else
     ACTION_NAME=$1
 fi
 
-export num_workers=8
+export num_workers=4
 export total_hour=1
-export use_pretrained='False'
 export patience=20
 
 export implementation='LabelOnlyBaseline'
 
-# export resume='last_checkpoint.pth.tar'
-export resume='None'
-
 #experiment setting
 export dataset_name='TMED2'
-export data_seed=1
-export training_seed=0
-export development_size='DEV56' 
-# export arch='resnet18'
-export arch='wideresnet'
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/data_seed$data_seed/training_seed$training_seed/$implementation/pretrained$use_pretrained/arch$arch/no_transformation"
-# export train_dir="LABELONLYBASELINE_2"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/lakshita_testing/$implementation"
 mkdir -p $train_dir
 
-export script="src.$implementation.$implementation"
+export script="src.hyper_search"
 
-
-
-export train_epoch=1
+export arch='resnet18'
+export train_epoch=100
 export start_epoch=0
 
 
 #data paths
 export l_train_dataset_path="/cluster/tufts/hugheslab/datasets/tmed/version2/labels_training.csv"
-export val_dataset_path="/cluster/tufts/hugheslab/datasets/tmed/version2/labels_val.csv"
-export test_dataset_path="/cluster/tufts/hugheslab/datasets/tmed/version2/labels_test.csv"
-export root_dataset_path='/cluster/tufts/hugheslab/datasets/tmed/version2'
+export u_train_dataset_path=""
 
+export val_dataset_path="/cluster/tufts/hugheslab/datasets/tmed/version2/labels_val.csv"
+
+export test_dataset_path="/cluster/tufts/hugheslab/datasets/tmed/version2/labels_test.csv"
+export root_dataset_path="/cluster/tufts/hugheslab/datasets/tmed/version2"
 
 #shared config
-export labeledtrain_batchsize=128 #default
+export labeledtrain_batchsize=512
+export unlabeledtrain_batchsize=64
 
 
 #PL config, candidate hypers to search
@@ -74,5 +68,3 @@ elif [[ $ACTION_NAME == 'run_here' ]]; then
     ## Use this line to just run interactively
     bash ./do_experiment.slurm
 fi
-
-
