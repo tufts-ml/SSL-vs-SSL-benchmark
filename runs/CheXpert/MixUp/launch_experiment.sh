@@ -31,7 +31,7 @@ export dataset_name='CheXpert2'
 export data_seed=0
 export training_seed=0
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/MixUp20/data_seed$data_seed/training_seed$training_seed/$implementation/pretrained$use_pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/MixUp20effusion/data_seed$data_seed/training_seed$training_seed/$implementation/pretrained$use_pretrained"
 echo "Training directory: $train_dir"
 
 mkdir -p $train_dir
@@ -47,9 +47,9 @@ export start_epoch=0
 # export val_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/val_data.csv'
 # export test_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/test_data.csv'
 # export root_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/images'
-export l_train_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/train_data_atelectasis.csv'
-export val_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/val_data_atelectasis.csv'
-export test_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/test_data_atelectasis.csv'
+export l_train_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/train_data_effusion.csv'
+export val_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/val_data_effusion.csv'
+export test_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/test_data_effusion.csv'
 export root_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/images'
 
 
