@@ -36,7 +36,7 @@ launch_args = [
 
     # model config
     # "--freeze_backbone",
-    "-- use_pretrained",
+    "--use_pretrained",
     "--arch resnet18",
 
     # output location

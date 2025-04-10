@@ -251,7 +251,7 @@ def train(args, method_config):
             all_labels = torch.cat(all_labels)
 
             print("Fitting classifier")
-            clf = LogisticRegression(max_iter=100)
+            clf = LogisticRegression(max_iter=1000)
             clf.fit(all_features, all_labels)
 
             probs = clf.predict_proba(all_features)
