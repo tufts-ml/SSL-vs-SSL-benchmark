@@ -4,6 +4,7 @@ import os
 import time
 
 
+from sklearn.linear_model import LogisticRegression
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
@@ -221,55 +222,56 @@ def train(args, method_config):
     current_count = 0  # for early stopping, when continue training
     early_stopping = EarlyStopping(patience=args.patience, initial_count=current_count)
 
-    classifier = None
-    classifier_optimizer = None
-
-    if args.implementation == 'BarlowTwins':
-        classifier = torch.nn.Linear(2048, args.num_classes).to(args.device)
-        classifier_optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-3)
-
     for epoch in range(args.start_epoch, args.train_epoch):
         start_time = time.time()
 
-        if classifier is not None:
+        clf = None
+
+        if args.implementation == 'BarlowTwins':
             ssl_loss = train_unlabeled_one_epoch(
                 args, model, optimizer, scheduler, unlabel_loader, epoch)
             print(f"Epoch {epoch+1} - Unlabeled Loss: {ssl_loss:.4f}")
 
-            # Train classifier
+            # Fit classifier
             model.eval()
-            classifier.train()
 
-            logits = []
-            labels = []
+            all_features = []
+            all_labels = []
 
             for batch_idx, (l_input, l_labels) in enumerate(train_loader):
+                print(f"Batch {batch_idx+1}/{len(train_loader)}")
                 l_input, l_labels = l_input.to(args.device), l_labels.to(args.device)
-                classifier_optimizer.zero_grad()
                 with torch.no_grad():
                     features = model.eval_forward(l_input, l_labels)[0]
-                batch_logits = classifier(features) 
-                loss = torch.nn.functional.cross_entropy(batch_logits, l_labels)
-                loss.backward()
-                classifier_optimizer.step()
 
-                logits.append(batch_logits.detach().cpu())  # Append tensor to list
-                labels.append(l_labels.detach().cpu())
+                all_features.append(features.cpu())
+                all_labels.append(l_labels.cpu())
 
-            logits = torch.cat(logits)  # Convert list of tensors back to a single tensor
-            labels = torch.cat(labels)
-            train_loss = torch.nn.functional.cross_entropy(logits, labels).item()
+            all_features = torch.cat(all_features)
+            all_labels = torch.cat(all_labels)
+
+            print("Fitting classifier")
+            clf = LogisticRegression(max_iter=100)
+            clf.fit(all_features, all_labels)
+
+            probs = clf.predict_proba(all_features)
+            probs = torch.tensor(probs, dtype=torch.float32).to(args.device)
+            labels = all_labels.to(args.device)
+            # TODO: does it really make sense to calculate loss here?
+            train_loss = torch.nn.functional.cross_entropy(probs, labels).item()
+            print(f"Train Loss: {train_loss:.4f}")
         else:
             # Train model
-            train_loss, logits, labels = train_one_epoch(
+            train_loss, probs, labels = train_one_epoch(
                 args, model, optimizer, scheduler, train_loader, epoch)
 
-        train_pred = logits.cpu().detach().numpy().argmax(axis=1)
+        train_pred = probs.cpu().detach().numpy().argmax(axis=1)
         train_targets = labels.cpu().detach().numpy()
         train_acc = calculate_plain_accuracy(train_pred, train_targets)
 
         # Validation
-        val_metrics = eval_model(args, val_loader, model, args.weights, classifier)
+        print("Evaluating on validation set")
+        val_metrics = eval_model(args, val_loader, model, args.weights, clf)
 
         if val_metrics['plain_accuracy'] > best_val_acc:
             best_val_acc = val_metrics['plain_accuracy']
@@ -312,7 +314,7 @@ def train(args, method_config):
             break
 
     # Final Testing
-    test_metrics = eval_model(args, test_loader, model, args.weights)
+    test_metrics = eval_model(args, test_loader, model, args.weights, clf)
     test_acc = test_metrics['plain_accuracy']
 
     writer.add_scalar('test/accuracy', test_acc, epoch)

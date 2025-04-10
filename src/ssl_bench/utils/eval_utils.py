@@ -37,15 +37,16 @@ def eval_model(args, data_loader, model, weights=None, classifier=None):
         all_labels, all_probs = [], []
 
         for inputs, labels in data_loader:
-            inputs, labels = inputs.to(args.device).float(), labels.to(args.device).long()
+            inputs, labels = inputs.to(args.device).float(), labels.to(args.device)
 
             if classifier is None:
                 probs, loss = model.eval_forward(inputs, labels)
             else:
                 features, _ = model.eval_forward(inputs, labels)
-                logits = classifier(features) 
-                probs = func.softmax(logits, dim=1)
-                loss = func.cross_entropy(probs, labels, weight=weights, reduction='mean')
+                features = features.cpu().numpy()
+                probs = classifier.predict_proba(features)
+                probs = torch.tensor(probs, dtype=torch.float32).to(args.device)
+                loss = func.cross_entropy(probs, labels, weight=weights).item()
 
             all_probs.append(probs)
             all_labels.append(labels)
