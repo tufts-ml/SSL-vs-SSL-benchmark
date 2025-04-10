@@ -11,14 +11,14 @@ slurm_args = [
     "--ntasks=1",
     "--cpus-per-task=8",
     "--mem-per-cpu=2G",
-    "--time=24:00:00",
+    "--time=2:00:00",
     "--partition=hugheslab",
     "--gres=gpu:rtx_6000:1",
 ]
 
 launch_args = [
     # method to use
-    "--implementation LabelOnlyBaseline",
+    "--implementation BarlowTwins",
 
     # IDRID config
     "--dataset_name IDRID",
@@ -26,27 +26,29 @@ launch_args = [
     "--val_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Labels/validation.csv",
     "--test_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Labels/test.csv",
     "--l_root_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Images",
+    "--u_train_dataset_path /cluster/tufts/hugheslab/datasets/AIROGS/train.csv",
+    "--u_root_dataset_path /cluster/tufts/hugheslab/datasets/AIROGS/Images",
 
     # DataLoader config
     "--labeledtrain_batchsize 32",
+    "--unlabeledtrain_batchsize 128",
     "--num_workers 8",
 
     # model config
     # "--freeze_backbone",
-    # "--use_pretrained",
+    "-- use_pretrained",
     "--arch resnet18",
 
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/LabelOnlyBaseline/test",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/fft",
 
     # optimization config
     "--train_epoch 100",
     "--start_epoch 0",
-    "--total_hour 24",
+    "--total_hour 1",
     "--optimizer_type Adam",
     "--lr_warmup_epochs 0",
     "--lr_schedule_type CosineLR",
-    "--lr_cycle_epochs 100",  # should default to --train_epoch
 ]
 
 if __name__ == "__main__":

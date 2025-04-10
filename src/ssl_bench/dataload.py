@@ -165,7 +165,7 @@ def get_dataloaders(args):
         unlabel_loader = None
 
     if valid_dataset is not None:
-        valid_loader = torch.utils.data.DataLoader(valid_dataset, 128,
+        valid_loader = torch.utils.data.DataLoader(valid_dataset, 32,
                                                    shuffle=False, drop_last=False,
                                                    num_workers=args.num_workers,
                                                    pin_memory=True)
@@ -173,7 +173,7 @@ def get_dataloaders(args):
         valid_loader = None
 
     if test_dataset is not None:
-        test_loader = torch.utils.data.DataLoader(test_dataset, 128,
+        test_loader = torch.utils.data.DataLoader(test_dataset, 32,
                                                   shuffle=False, drop_last=False,
                                                   num_workers=args.num_workers,
                                                   pin_memory=True)
