@@ -40,16 +40,15 @@ launch_args = [
     "--arch resnet18",
 
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/test",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/base_higheriter",
 
     # optimization config
     "--train_epoch 100",
     "--start_epoch 0",
-    "--total_hour 1",
+    "--total_hour 24",
     "--optimizer_type Adam",
     "--lr_warmup_epochs 0",
     "--lr_schedule_type CosineLR",
-    "--lr_cycle_epochs 100",  # should default to --train_epoch
 ]
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ from ssl_bench.utils.train_utils import (AverageMeter, save_checkpoint,
                                          EarlyStopping, get_model,
                                          get_optimizer, get_lr_scheduler)
 from ssl_bench.utils.eval_utils import (
-    calculate_plain_accuracy,
+    calculate_balanced_accuracy,
     eval_model,
 )
 from ssl_bench.utils.arg_parser import parse_args
@@ -60,8 +60,9 @@ def setup_training(args, method_config: HyperparamSpace):
     return model, optimizer, scheduler, train_loader, unlabel_loader, val_loader, test_loader
 
 
-def train_one_epoch(args, model, optimizer, scheduler, train_loader,
-                    epoch, unlabel_loader=None):
+def train_one_epoch(
+    args, model, optimizer, scheduler, epoch, label_loader=None, unlabel_loader=None
+):
     """Train model for one epoch
 
     Args:
@@ -69,9 +70,9 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader,
         model (torch.nn.Module): model to train
         optimizer (torch.optim.Optimizer): optimizer
         scheduler (torch.optim.lr_scheduler.LambdaLR): learning rate scheduler
-        train_loader (torch.utils.data.DataLoader): training data loader
-        unlabel_loader (torch.utils.data.DataLoader): unlabeled data loader
         epoch (int): current epoch
+        label_loader (torch.utils.data.DataLoader): training data loader
+        unlabel_loader (torch.utils.data.DataLoader): unlabeled data loader
 
     Returns:
         float: average loss for the epoch
@@ -88,27 +89,38 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader,
     all_logits = []
     all_labels = []
 
-    labeledtrain_iter = iter(train_loader)
+    labeledtrain_iter = iter(label_loader)
+    unlabeledtrain_iter = iter(unlabel_loader)
     n_steps_per_epoch = args.nimg_per_epoch // args.labeledtrain_batchsize
     p_bar = tqdm(range(n_steps_per_epoch), disable=False)
 
     start_time = time.time()
 
     for batch_idx in range(n_steps_per_epoch):
-        try:
-            l_input, l_labels = next(labeledtrain_iter)
-        except StopIteration:
-            labeledtrain_iter = iter(train_loader)
-            l_input, l_labels = next(labeledtrain_iter)
-
         data_time.update(time.time() - start_time)
 
         optimizer.zero_grad()  # Zero gradients before backward pass
 
-        logits, loss, supervised_loss, unsupervised_loss = model.forward(
-            l_input, l_labels)
+        if label_loader is not None:
+            try:
+                l_input, l_labels = next(labeledtrain_iter)
+            except StopIteration:
+                labeledtrain_iter = iter(label_loader)
+                l_input, l_labels = next(labeledtrain_iter)
+        else:
+            l_input, l_labels = None, None
 
-        total_loss = supervised_loss + (unsupervised_loss if unsupervised_loss is not None else 0)
+        if unlabel_loader is not None:
+            try:
+                u_input = next(unlabeledtrain_iter)
+            except StopIteration:
+                unlabeledtrain_iter = iter(unlabel_loader)
+                u_input = next(unlabeledtrain_iter)
+        else:
+            u_input = None
+
+        logits, loss, supervised_loss, unsupervised_loss = model.forward(
+            l_input, l_labels, u_input)
 
         all_logits.append(logits.detach().cpu())
         all_labels.append(l_labels.detach().cpu())
@@ -117,7 +129,7 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader,
         batch_size = l_labels.size(0)
         labeled_loss.update(supervised_loss.item(), batch_size)
 
-        total_loss.backward()
+        loss.backward()
         optimizer.step()
 
         batch_time.update(time.time() - start_time)
@@ -135,71 +147,6 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader,
     return labeled_loss.avg, all_logits, all_labels
 
 
-def train_unlabeled_one_epoch(args, model, optimizer, scheduler, unlabel_loader,
-                              epoch):
-    """Train model for one epoch of unlabled data
-
-    Args:
-        args (Namespace): parsed arguments
-        model (torch.nn.Module): model to train
-        optimizer (torch.optim.Optimizer): optimizer
-        scheduler (torch.optim.lr_scheduler.LambdaLR): learning rate scheduler
-        unlabel_loader (torch.utils.data.DataLoader): unlabeled data loader
-        epoch (int): current epoch
-
-    Returns:
-        float: average loss for the epoch
-        torch.Tensor: logits from the model
-    """
-
-    model.train()
-    args.writer.add_scalar('train/lr', scheduler.get_last_lr()[0], epoch)
-    print(f"Epoch {epoch+1} - Learning Rate: {scheduler.get_last_lr()[0]}")
-
-    batch_time, data_time, unlabeled_loss = AverageMeter(), AverageMeter(), AverageMeter()
-
-    unlabeledtrain_iter = iter(unlabel_loader)
-    # TODO: fix below for unlabeled data
-    n_steps_per_epoch = 600 // args.unlabeledtrain_batchsize
-    p_bar = tqdm(range(n_steps_per_epoch), disable=False)
-
-    start_time = time.time()
-
-    for batch_idx in range(n_steps_per_epoch):
-        try:
-            u_input = next(unlabeledtrain_iter)
-        except StopIteration:
-            unlabeledtrain_iter = iter(unlabel_loader)
-            u_input = next(unlabeledtrain_iter)
-
-        data_time.update(time.time() - start_time)
-
-        optimizer.zero_grad()  # Zero gradients before backward pass
-
-        _, _, _, unsupervised_loss = model.forward(
-            None, None, u_input)
-
-        total_loss = unsupervised_loss
-
-        # Weighted update for correct loss averaging
-        batch_size = len(u_input)
-        unlabeled_loss.update(unsupervised_loss.item(), batch_size)
-
-        total_loss.backward()
-        optimizer.step()
-
-        batch_time.update(time.time() - start_time)
-        start_time = time.time()
-
-        p_bar.set_description(f"Epoch {epoch+1} - Unlabeled Loss: {unlabeled_loss.avg:.4f}")
-        p_bar.update()
-
-    p_bar.close()
-    scheduler.step()
-
-    return unlabeled_loss.avg
-
-
 def train(args, method_config):
     """ Train model
 
@@ -214,7 +161,7 @@ def train(args, method_config):
 
     start_time = time.time()
 
-    model, optimizer, scheduler, train_loader, unlabel_loader, \
+    model, optimizer, scheduler, label_loader, unlabel_loader, \
         val_loader, test_loader = setup_training(args, method_config)
     writer = SummaryWriter(args.train_dir)
     args.writer = writer
@@ -227,20 +174,18 @@ def train(args, method_config):
 
         clf = None
 
-        if args.implementation == 'BarlowTwins':
-            ssl_loss = train_unlabeled_one_epoch(
-                args, model, optimizer, scheduler, unlabel_loader, epoch)
-            print(f"Epoch {epoch+1} - Unlabeled Loss: {ssl_loss:.4f}")
+        train_loss, probs, labels = train_one_epoch(
+            args, model, optimizer, scheduler, epoch, label_loader, unlabel_loader)
 
-            # Fit classifier
+        if args.implementation == 'BarlowTwins':
             model.eval()
 
             all_features = []
             all_labels = []
 
-            for batch_idx, (l_input, l_labels) in enumerate(train_loader):
-                print(f"Batch {batch_idx+1}/{len(train_loader)}")
+            for batch_idx, (l_input, l_labels) in enumerate(label_loader):
                 l_input, l_labels = l_input.to(args.device), l_labels.to(args.device)
+
                 with torch.no_grad():
                     features = model.eval_forward(l_input, l_labels)[0]
 
@@ -251,38 +196,29 @@ def train(args, method_config):
             all_labels = torch.cat(all_labels)
 
             print("Fitting classifier")
-            clf = LogisticRegression(max_iter=1000)
+            clf = LogisticRegression(random_state=0, class_weight='balanced')
             clf.fit(all_features, all_labels)
 
             probs = clf.predict_proba(all_features)
             probs = torch.tensor(probs, dtype=torch.float32).to(args.device)
             labels = all_labels.to(args.device)
-            # TODO: does it really make sense to calculate loss here?
-            train_loss = torch.nn.functional.cross_entropy(probs, labels).item()
-            print(f"Train Loss: {train_loss:.4f}")
-        else:
-            # Train model
-            train_loss, probs, labels = train_one_epoch(
-                args, model, optimizer, scheduler, train_loader, epoch)
 
         train_pred = probs.cpu().detach().numpy().argmax(axis=1)
         train_targets = labels.cpu().detach().numpy()
-        train_acc = calculate_plain_accuracy(train_pred, train_targets)
+        train_acc = calculate_balanced_accuracy(train_pred, train_targets)
 
-        # Validation
-        print("Evaluating on validation set")
         val_metrics = eval_model(args, val_loader, model, args.weights, clf)
 
-        if val_metrics['plain_accuracy'] > best_val_acc:
-            best_val_acc = val_metrics['plain_accuracy']
+        if val_metrics['balanced_accuracy'] > best_val_acc:
+            best_val_acc = val_metrics['balanced_accuracy']
 
-        early_stopping(val_metrics['plain_accuracy'])
+        early_stopping(val_metrics['balanced_accuracy'])
 
         # Logging
         print(f"Epoch {epoch+1} - Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, ")
         writer.add_scalar('train/loss', train_loss, epoch)
-        writer.add_scalar('train/accuracy', train_acc, epoch)
-        writer.add_scalar('val/accuracy', val_metrics['plain_accuracy'], epoch)
+        writer.add_scalar('train/balanced_accuracy', train_acc, epoch)
+        writer.add_scalar('val/plain_accuracy', val_metrics['plain_accuracy'], epoch)
         writer.add_scalar('val/loss', val_metrics['loss'], epoch)
         writer.add_scalar('val/balanced_accuracy', val_metrics['balanced_accuracy'], epoch)
         writer.add_scalar('val/auroc', val_metrics['auroc'], epoch)
@@ -296,13 +232,13 @@ def train(args, method_config):
                 'optimizer': optimizer.state_dict(),
                 'scheduler': scheduler.state_dict()
             },
-            val_metrics['plain_accuracy'] > best_val_acc,
+            val_metrics['balanced_accuracy'] > best_val_acc,
             args.train_dir
         )
 
         total_time += time.time() - start_time
 
-        print(f"Validation Accuracy: {val_metrics['plain_accuracy']:.4f}")
+        print(f"Validation Accuracy: {val_metrics['balanced_accuracy']:.4f}")
         print(f"Early Stopping Count: {early_stopping.counter}")
 
         if early_stopping.early_stop:
@@ -315,9 +251,9 @@ def train(args, method_config):
 
     # Final Testing
     test_metrics = eval_model(args, test_loader, model, args.weights, clf)
-    test_acc = test_metrics['plain_accuracy']
+    test_acc = test_metrics['balanced_accuracy']
 
-    writer.add_scalar('test/accuracy', test_acc, epoch)
+    writer.add_scalar('test/accuracy', test_metrics['plain_accuracy'], epoch)
     writer.add_scalar('test/balanced_accuracy', test_metrics['balanced_accuracy'], epoch)
     writer.add_scalar('test/auroc', test_metrics['auroc'], epoch)
     writer.add_scalar('test/auprc', test_metrics['auprc'], epoch)
@@ -328,7 +264,7 @@ def train(args, method_config):
                    'total_epochs': epoch + 1, 'total_time': total_time}, f)
 
     writer.close()
-    return best_val_acc, test_metrics['plain_accuracy']
+    return best_val_acc, test_metrics['balanced_accuracy']
 
 
 def main(args):

@@ -45,7 +45,7 @@ launch_args = [
     # optimization config
     "--train_epoch 100",
     "--start_epoch 0",
-    "--total_hour 1",
+    "--total_hour 24",
     "--optimizer_type Adam",
     "--lr_warmup_epochs 0",
     "--lr_schedule_type CosineLR",
