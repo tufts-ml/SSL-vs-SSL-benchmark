@@ -9,6 +9,7 @@ from torchvision.models import resnet18, ResNet18_Weights
 import torch.nn.init as init
 from ssl_bench.methods.LabelOnlyBaseline import LabelOnlyBaseline
 from ssl_bench.methods.MixUp import MixUp
+from ssl_bench.methods.FixMatch import FixMatch
 import torch.optim as optim
 
 
@@ -145,6 +146,8 @@ def get_model(args):
         return LabelOnlyBaseline(model, args)
     elif args.implementation == 'MixUp':
         return MixUp(model, args)
+    elif args.implementation == 'FixMatch':
+        return FixMatch(model, args)
     else:
         raise NameError('Not implemented yet')
 
