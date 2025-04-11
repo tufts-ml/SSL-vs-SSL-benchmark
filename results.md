@@ -5,7 +5,7 @@
 | Family | Method | TMED2 | Chexpert | IDRID |
 | ------ | ------ | ----- | -------- | ----- |
 | Lab. only | CE | TODO (TODO) |71.04 (4/10)| 42.5186 (TODO) |
-| Lab. only | MixUp | |75.00 (4/10)| 42.9473 (TODO) |
+| Lab. only | MixUp | |75.00 (4/10)| 47.7351 (4/11) |
 | self      | Barlow Twins | | | |
 | self      | MoCo v3 | | | |
 | self      | SimCLR | | | |
