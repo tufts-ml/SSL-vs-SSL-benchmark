@@ -4,8 +4,8 @@
 ## Full-Finetuning
 | Family | Method | TMED2 | Chexpert | IDRID |
 | ------ | ------ | ----- | -------- | ----- |
-| Lab. only | CE | TODO (TODO) |71.04 (4/10)| 42.5186 (TODO) |
-| Lab. only | MixUp | |75.00 (4/10)| 47.7351 (4/11) |
+| Lab. only | CE | TODO (TODO) |79.12 (4/10)| 42.5186 (TODO) |
+| Lab. only | MixUp | |76.05 (4/10)| 47.7351 (4/11) |
 | self      | Barlow Twins | | | |
 | self      | MoCo v3 | | | |
 | self      | SimCLR | | | |
