@@ -138,6 +138,19 @@ def get_model(args):
                                         dropout=0.0,
                                         num_classes=args.num_classes)
 
+        if args.use_pretrained and args.freeze_backbone:
+            print("Freezing layers")
+            for param in model.parameters():
+                param.requires_grad = False
+
+        model.fc = torch.nn.Linear(512, args.num_classes)
+        init.normal_(model.fc.weight, mean=0.0, std=0.0001)
+        init.zeros_(model.fc.bias)
+
+        # Ensure the new last layer is trainable
+        for param in model.fc.parameters():
+            param.requires_grad = True
+
     else:
         raise NameError('Not implemented yet')
 
