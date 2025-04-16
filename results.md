@@ -6,7 +6,7 @@
 | ------ | ------ | ----- | -------- | ----- |
 | Lab. only | CE | 32.81 (4/10) |79.12 (4/10)| 42.5186 (TODO) |
 | Lab. only | MixUp | 31.8541 (4/10) |76.05 (4/10)| 47.7351 (4/11) |
-| self      | Barlow Twins | | | |
+| self      | Barlow Twins | | | 34.5416 (4/16) |
 | self      | MoCo v3 | | | |
 | self      | SimCLR | | | |
 | semi      | MixMatch | | | |
