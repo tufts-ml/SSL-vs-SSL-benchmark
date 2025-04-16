@@ -14,10 +14,10 @@
 | semi      | PseudoLab | | | |
 
 ## Linear Probing
-| Method | TMED2 | Chexpert | IDRID |
-| --- | --- | --- | --- |
-| CE | 30.6864 (4/10) |70.91 (4/10)| 45.9161 (TODO) |
-| MixUp | 30.3466 (4/10) |73.13 (4/10)| 43.3290 (TODO) |
-| Barlow Twins | | | |
+| Family | Method | TMED2 | Chexpert | IDRID |
+| ------ | --- | --- | --- | --- |
+| Lab. only | CE | 30.6864 (4/10) |70.91 (4/10)| 45.9161 (TODO) |
+| Lab. only | MixUp | 30.3466 (4/10) |73.13 (4/10)| 48.2996 (4/16) |
+| self      | Barlow Twins | | | |
 
 Table of (TODO balanced?) accuracy results and date when the experiment was completed in parentheses.
