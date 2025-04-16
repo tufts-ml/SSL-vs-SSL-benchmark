@@ -85,7 +85,7 @@ def train_one_epoch(
     args.writer.add_scalar('train/lr', scheduler.get_last_lr()[0], epoch)
     print(f"Epoch {epoch+1} - Learning Rate: {scheduler.get_last_lr()[0]}")
 
-    batch_time, data_time, labeled_loss = AverageMeter(), AverageMeter(), AverageMeter()
+    batch_time, data_time, total_loss = AverageMeter(), AverageMeter(), AverageMeter()
 
     all_logits = []
     all_labels = []
@@ -130,7 +130,7 @@ def train_one_epoch(
 
         # Weighted update for correct loss averaging
         batch_size = l_labels.size(0)
-        labeled_loss.update(supervised_loss, batch_size)
+        total_loss.update(loss, batch_size)
 
         loss.backward()
         optimizer.step()
@@ -138,7 +138,7 @@ def train_one_epoch(
         batch_time.update(time.time() - start_time)
         start_time = time.time()
 
-        p_bar.set_description(f"Epoch {epoch+1} - Loss: {labeled_loss.avg:.4f}")
+        p_bar.set_description(f"Epoch {epoch+1} - Loss: {total_loss.avg:.4f}")
         p_bar.update()
 
     p_bar.close()
@@ -147,7 +147,7 @@ def train_one_epoch(
     all_logits = torch.cat(all_logits) if all_logits else None
     all_labels = torch.cat(all_labels) if all_labels else None
 
-    return labeled_loss.avg, all_logits, all_labels
+    return total_loss.avg, all_logits, all_labels
 
 
 def train(args, method_config):
@@ -197,7 +197,7 @@ def train(args, method_config):
             all_features = torch.cat(all_features)
             all_labels = torch.cat(all_labels)
 
-            if (epoch % 10) == 0:
+            if (epoch % 5) == 0:
                 print("Fitting classifier")
                 clf = LogisticRegression(random_state=0, class_weight='balanced')
                 clf.fit(all_features, all_labels)

@@ -26,8 +26,8 @@ launch_args = [
     "--val_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Labels/validation.csv",
     "--test_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Labels/test.csv",
     "--l_root_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Images",
-    "--u_train_dataset_path /cluster/tufts/hugheslab/datasets/AIROGS/train.csv",
-    "--u_root_dataset_path /cluster/tufts/hugheslab/datasets/AIROGS/Images",
+    "--u_train_dataset_path /cluster/tufts/hugheslab/datasets/AIROGS/train_0.csv",
+    "--u_root_dataset_path /cluster/tufts/hugheslab/datasets/AIROGS/Images_0/0",
 
     # DataLoader config
     "--labeledtrain_batchsize 32",
@@ -40,7 +40,7 @@ launch_args = [
     "--arch resnet18",
 
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/fft",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/more_images/lp",
 
     # optimization config
     "--train_epoch 100",
