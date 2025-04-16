@@ -245,4 +245,9 @@ method_configs = {
         "wd": loguniform(1e-6, 1e-3),
         "alpha": loguniform(1e-1, 10),
     }),
+    'BarlowTwins': HyperparamSpace({
+        "lr": loguniform(1e-5, 1e-2),
+        "wd": loguniform(1e-6, 1e-3),
+        "lambd": loguniform(1e-3, 1e-2),
+    }),
 }

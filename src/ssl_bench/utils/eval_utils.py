@@ -6,6 +6,7 @@ import os
 import pickle
 
 import torch
+from torch.nn import functional as func
 from sklearn.metrics import auc, roc_curve
 from sklearn.metrics import confusion_matrix as sklearn_cm
 from sklearn.metrics import precision_recall_curve
@@ -14,7 +15,7 @@ from sklearn.metrics import roc_auc_score
 from ssl_bench.utils.train_utils import AverageMeter
 
 
-def eval_model(args, data_loader, model, weights=None):
+def eval_model(args, data_loader, model, weights=None, classifier=None):
     """Evaluate the model on the given data_loader.
 
     Args:
@@ -36,12 +37,20 @@ def eval_model(args, data_loader, model, weights=None):
         all_labels, all_probs = [], []
 
         for inputs, labels in data_loader:
-            inputs, labels = inputs.to(args.device).float(), labels.to(args.device).long()
-            probs, loss = model.eval_forward(inputs, labels)
+            inputs, labels = inputs.to(args.device).float(), labels.to(args.device)
+
+            if classifier is None:
+                probs, loss = model.eval_forward(inputs, labels)
+            else:
+                features, _ = model.eval_forward(inputs, labels)
+                features = features.cpu().numpy()
+                probs = classifier.predict_proba(features)
+                probs = torch.tensor(probs, dtype=torch.float32).to(args.device)
+                loss = func.cross_entropy(probs, labels, weight=weights).item()
+
             all_probs.append(probs)
             all_labels.append(labels)
-
-            loss_meter.update(loss.item(), inputs.size(0))
+            loss_meter.update(loss, inputs.size(0))
 
         all_labels = torch.cat(all_labels).cpu().numpy()
         all_probs = torch.cat(all_probs).cpu().numpy()
