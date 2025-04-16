@@ -32,12 +32,12 @@ launch_args = [
     "--num_workers 8",
 
     # model config
-    # "--freeze_backbone",
+    "--freeze_backbone",
     "--use_pretrained",
     "--arch resnet18",
 
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/LabelOnlyBaseline/Final/lp",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/LabelOnlyBaseline/final/lp",
 
     # optimization config
     "--train_epoch 100",
