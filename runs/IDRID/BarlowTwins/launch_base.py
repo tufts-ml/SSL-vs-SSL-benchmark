@@ -11,7 +11,7 @@ slurm_args = [
     "--ntasks=1",
     "--cpus-per-task=8",
     "--mem-per-cpu=2G",
-    "--time=2:00:00",
+    "--time=24:00:00",
     "--partition=hugheslab",
     "--gres=gpu:rtx_6000:1",
 ]

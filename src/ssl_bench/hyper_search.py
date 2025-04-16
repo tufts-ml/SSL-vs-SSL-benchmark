@@ -197,9 +197,11 @@ def train(args, method_config):
             all_features = torch.cat(all_features)
             all_labels = torch.cat(all_labels)
 
-            print("Fitting classifier")
-            clf = LogisticRegression(random_state=0, class_weight='balanced')
-            clf.fit(all_features, all_labels)
+            if (epoch % 10) == 0:
+                print("Fitting classifier")
+                clf = LogisticRegression(random_state=0, class_weight='balanced')
+                clf.fit(all_features, all_labels)
+                print("Classifier fitted")
 
             probs = clf.predict_proba(all_features)
             probs = torch.tensor(probs, dtype=torch.float32).to(args.device)

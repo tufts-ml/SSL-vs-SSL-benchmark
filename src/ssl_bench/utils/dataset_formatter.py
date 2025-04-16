@@ -49,4 +49,6 @@ with open(csv_file, mode='w', newline='') as f:
         writer.writerow([img_filename, image_label] if LABELED else [img_filename])
 
 print(
-    f"✅ Reformatted dataset: {len(images)} unlabeled images saved in '{output_folder}/' and filenames in '{csv_file}'.")
+    f"✅ Reformatted dataset: {len(images)} unlabeled images saved in '{output_folder}/'",
+    "and filenames in '{csv_file}'."
+)
