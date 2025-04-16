@@ -2,7 +2,7 @@ import torch
 from torchvision import transforms
 from torchvision.models import ResNet18_Weights
 
-from ssl_bench.config import dataset_configs
+from ssl_bench.config import dataset_configs, get_transformations
 from ssl_bench.utils.apply_clahe import apply_clahe
 from ssl_bench.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 
@@ -23,89 +23,13 @@ def get_dataloaders(args):
     dataset_std = dataset_configs[args.dataset_name]['dataset_std']
     image_size = dataset_configs[args.dataset_name]['image_size']
 
-    # data transformations for TMED2
-    if dataset_name == "TMED2":
-        transform_labeledtrain = transforms.Compose([
-            transforms.Grayscale(num_output_channels=3),
-            transforms.Lambda(apply_clahe),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(size=image_size,
-                                  padding=int(image_size*0.125),
-                                  padding_mode='reflect'),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
-
-        transform_eval = transforms.Compose([
-            transforms.Grayscale(num_output_channels=3),
-            transforms.Lambda(apply_clahe),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
-
-    # data transformations for CheXpert
-    elif dataset_name == "CheXpert":
-        transform_labeledtrain = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Grayscale(num_output_channels=3),
-            transforms.RandomHorizontalFlip(),
-            transforms.Resize(400),
-            transforms.CenterCrop(320),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
-
-        transform_eval = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Grayscale(num_output_channels=3),
-            transforms.RandomHorizontalFlip(),
-            transforms.Resize(400),
-            transforms.CenterCrop(320),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
-
-    # data transformations for IDRID
-    elif dataset_name == "IDRID":
-        transform_labeledtrain = transforms.Compose([
-            transforms.Resize(size=image_size),
-            transforms.Lambda(apply_clahe),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(size=image_size,
-                                  padding=int(image_size*0.125),
-                                  padding_mode='reflect'),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
-
-        transform_eval = transforms.Compose([
-            transforms.Resize(size=image_size),
-            transforms.Lambda(apply_clahe),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
-
-    else:
-        raise NotImplementedError(f"Implement dataloading logic for the \
-            following dataset: {dataset_name}")
-
-    if args.use_pretrained:
-        print("Using pretrained model and transforms")
-        pretrained_transforms = ResNet18_Weights.IMAGENET1K_V1.transforms()
-        transform_labeledtrain = transforms.Compose([
-            transforms.Grayscale(num_output_channels=3),
-            pretrained_transforms,
-        ])
-        transform_eval = transforms.Compose([
-            transforms.Grayscale(num_output_channels=3),
-            pretrained_transforms,
-        ])
+    l_train_transform, u_train_transform, val_transform, test_transform = get_transformations(args)
 
     # Process unlabeled data
     if args.u_train_dataset_path != '':
         unlabel_dataset = UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
                                                    root_dir=args.u_root_dataset_path,
-                                                   transform=transform_labeledtrain)
+                                                   transform=u_train_transform)
     else:
         unlabel_dataset = None
 
@@ -117,21 +41,21 @@ def get_dataloaders(args):
     if args.l_train_dataset_path != '':
         train_dataset = dataset_class(csv_file=args.l_train_dataset_path,
                                       root_dir=args.l_root_dataset_path,
-                                      transform=transform_labeledtrain)
+                                      transform=l_train_transform)
     else:
         train_dataset = None
 
     if args.val_dataset_path != '':
         valid_dataset = dataset_class(csv_file=args.val_dataset_path,
                                       root_dir=args.l_root_dataset_path,
-                                      transform=transform_eval)
+                                      transform=val_transform)
     else:
         valid_dataset = None
 
     if args.test_dataset_path != '':
         test_dataset = dataset_class(csv_file=args.test_dataset_path,
                                      root_dir=args.l_root_dataset_path,
-                                     transform=transform_eval)
+                                     transform=test_transform)
     else:
         test_dataset = None
 

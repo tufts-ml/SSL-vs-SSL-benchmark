@@ -229,6 +229,8 @@ def train(args, method_config):
 
 def main(args):
     method_config = method_configs[args.implementation]
+    if not os.path.exists(args.train_dir):
+        os.makedirs(args.train_dir)
     log_path = os.path.join(args.train_dir, 'logging.log')
     logging.basicConfig(filename=log_path, encoding='utf-8', level=logging.INFO)
     logging.info(f"Args: {args}")
