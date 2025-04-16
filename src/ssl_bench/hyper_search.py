@@ -89,8 +89,6 @@ def train_one_epoch(
     all_logits = []
     all_labels = []
 
-    labeledtrain_iter = iter(label_loader)
-    unlabeledtrain_iter = iter(unlabel_loader)
     n_steps_per_epoch = args.nimg_per_epoch // args.labeledtrain_batchsize
     p_bar = tqdm(range(n_steps_per_epoch), disable=False)
 
@@ -102,6 +100,7 @@ def train_one_epoch(
         optimizer.zero_grad()  # Zero gradients before backward pass
 
         if label_loader is not None:
+            labeledtrain_iter = iter(label_loader)
             try:
                 l_input, l_labels = next(labeledtrain_iter)
             except StopIteration:
@@ -111,6 +110,7 @@ def train_one_epoch(
             l_input, l_labels = None, None
 
         if unlabel_loader is not None:
+            unlabeledtrain_iter = iter(unlabel_loader)
             try:
                 u_input = next(unlabeledtrain_iter)
             except StopIteration:
@@ -122,12 +122,14 @@ def train_one_epoch(
         logits, loss, supervised_loss, unsupervised_loss = model.forward(
             l_input, l_labels, u_input)
 
-        all_logits.append(logits.detach().cpu())
-        all_labels.append(l_labels.detach().cpu())
+        if logits is not None:
+            all_logits.append(logits.detach().cpu())
+        if l_labels is not None:
+            all_labels.append(l_labels.detach().cpu())
 
         # Weighted update for correct loss averaging
         batch_size = l_labels.size(0)
-        labeled_loss.update(supervised_loss.item(), batch_size)
+        labeled_loss.update(supervised_loss, batch_size)
 
         loss.backward()
         optimizer.step()
@@ -141,8 +143,8 @@ def train_one_epoch(
     p_bar.close()
     scheduler.step()
 
-    all_logits = torch.cat(all_logits)
-    all_labels = torch.cat(all_labels)
+    all_logits = torch.cat(all_logits) if all_logits else None
+    all_labels = torch.cat(all_labels) if all_labels else None
 
     return labeled_loss.avg, all_logits, all_labels
 
