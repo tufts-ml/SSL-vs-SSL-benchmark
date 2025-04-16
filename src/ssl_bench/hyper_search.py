@@ -171,10 +171,10 @@ def train(args, method_config):
     current_count = 0  # for early stopping, when continue training
     early_stopping = EarlyStopping(patience=args.patience, initial_count=current_count)
 
+    clf = None
+
     for epoch in range(args.start_epoch, args.train_epoch):
         start_time = time.time()
-
-        clf = None
 
         train_loss, probs, labels = train_one_epoch(
             args, model, optimizer, scheduler, epoch, label_loader, unlabel_loader)
@@ -274,6 +274,7 @@ def train(args, method_config):
 def main(args):
     method_config = method_configs[args.implementation]
     log_path = os.path.join(args.train_dir, 'logging.log')
+    os.makedirs(args.train_dir, exist_ok=True)
     logging.basicConfig(filename=log_path, encoding='utf-8', level=logging.INFO)
     logging.info(f"Args: {args}")
 
