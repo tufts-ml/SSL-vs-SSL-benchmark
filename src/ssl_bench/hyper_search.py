@@ -90,7 +90,15 @@ def train_one_epoch(
     all_logits = []
     all_labels = []
 
+    if label_loader is not None:
+        labeledtrain_iter = iter(label_loader)
+
+    if unlabel_loader is not None:
+        unlabeledtrain_iter = iter(unlabel_loader)
+
+    # TODO: should work for unlabeled set too
     n_steps_per_epoch = args.nimg_per_epoch // args.labeledtrain_batchsize
+    
     p_bar = tqdm(range(n_steps_per_epoch), disable=False)
 
     start_time = time.time()
@@ -101,7 +109,6 @@ def train_one_epoch(
         optimizer.zero_grad()  # Zero gradients before backward pass
 
         if label_loader is not None:
-            labeledtrain_iter = iter(label_loader)
             try:
                 l_input, l_labels = next(labeledtrain_iter)
             except StopIteration:
@@ -111,7 +118,6 @@ def train_one_epoch(
             l_input, l_labels = None, None
 
         if unlabel_loader is not None:
-            unlabeledtrain_iter = iter(unlabel_loader)
             try:
                 u_input = next(unlabeledtrain_iter)
             except StopIteration:
@@ -186,7 +192,8 @@ def train(args, method_config):
             all_labels = []
 
             for batch_idx, (l_input, l_labels) in enumerate(label_loader):
-                l_input, l_labels = l_input.to(args.device), l_labels.to(args.device)
+                l_input, l_labels = l_input.to(
+                    args.device, non_blocking=True), l_labels.to(args.device, non_blocking=True)
 
                 with torch.no_grad():
                     features = model.eval_forward(l_input, l_labels)[0]
