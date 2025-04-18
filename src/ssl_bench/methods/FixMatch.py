@@ -8,7 +8,12 @@ class FixMatch(MethodWrapper):
     def forward(self, l_data, l_labels, u_data=None):
         self.backbone.train()
 
-        u_weak, u_strong = u_data
+        if u_data is None:
+            print("Warning: u_data is None")
+            u_weak = u_strong = torch.zeros_like(l_data)  
+        else:
+            u_weak, u_strong = u_data
+            # print(f"u_data (before forward): {u_data}") 
 
         l_data = l_data.to(self.args.device).float()
         l_labels = l_labels.to(self.args.device).long()
@@ -24,7 +29,7 @@ class FixMatch(MethodWrapper):
             u_logits_weak = self.backbone(u_weak)
             u_probs_weak = func.softmax(u_logits_weak, dim=1)
             max_probs, pseudo_labels = torch.max(u_probs_weak, dim=1)
-            mask = max_probs.ge(self.args.conf_thresh).float()
+            mask = max_probs.ge(self.args.conf_threshold).float()
 
         u_logits_strong = self.backbone(u_strong)
         unsup_loss = func.cross_entropy(u_logits_strong, pseudo_labels,

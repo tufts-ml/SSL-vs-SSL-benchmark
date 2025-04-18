@@ -38,6 +38,14 @@ dataset_configs = {
                  'class_weights': [0.3027, 0.6973],
                  'nimg_per_epoch': 3500,
                  'num_classes': 2},
+
+    'CheXpert2': {'dataset_mean': (0.5064, 0.5064, 0.5064),
+                  'dataset_std': (0.2894, 0.2894, 0.2894),
+                  'image_size': 320,
+                  'class_weights': [0.3027, 0.6973],
+                  'nimg_per_epoch': 3500,
+                  'num_classes': 2},
+
 }
 
 

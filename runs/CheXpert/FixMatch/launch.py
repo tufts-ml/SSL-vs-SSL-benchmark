@@ -17,20 +17,17 @@ slurm_args = [
 ]
 
 launch_args = [
-    # method to use
     "--implementation FixMatch",
 
-    # CheXpert config
-    "--dataset_name CheXpert",
+    "--dataset_name CheXpert2",
     "--l_train_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/train_data_effusion.csv",
     "--val_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/val_data_effusion.csv",
     "--test_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/test_data_effusion.csv",
     "--l_root_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/images",
-    "--u_train_dataset_path /cluster/tufts/hugheslab/datasets/AIROGS/train.csv",
-    "--u_root_dataset_path /cluster/tufts/hugheslab/datasets/AIROGS/Images",
+    "--u_train_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/unlabeled_tr.csv",
+    "--u_root_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/images",
     # TODO get the unlabeled set on the cluster
 
-    # DataLoader config
     "--labeledtrain_batchsize 32",
     "--unlabeledtrain_batchsize 128",
     "--num_workers 8",
@@ -40,17 +37,19 @@ launch_args = [
     # "--use_pretrained",
     "--arch resnet18",
 
-    # output location
     "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/CheXpert/FixMatch/test",
 
-    # optimization config
+
     "--train_epoch 100",
     "--start_epoch 0",
     "--total_hour 1",
     "--optimizer_type Adam",
     "--lr_warmup_epochs 0",
     "--lr_schedule_type CosineLR",
-    "--lr_cycle_epochs 100",  # should default to --train_epoch
+    "--lr_cycle_epochs 100",
+
+    "--conf_threshold 0.95",  
+    "--unsup_weight 1.0",
 ]
 
 if __name__ == "__main__":
@@ -65,11 +64,10 @@ if __name__ == "__main__":
     if cur_dir.absolute().name != "SSL-vs-SSL-benchmark":
         raise Exception(f"Should run in SSL-vs-SSL-benchmark, {cur_dir.absolute()} found instead")
 
-    # construct the launch commands
+    # construct the launch command
     here_cmd = launch_cmd + " " + " ".join(launch_args)
     sbatch_cmd = f"sbatch {' '.join(slurm_args)} --wrap \"{here_cmd}\""
 
-    # execute the requested mode
     if args.mode == "print":
         print("Printing current launch commands, to run use one of the following modes")
         print(f"sbatch:\n{sbatch_cmd}")

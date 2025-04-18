@@ -4,6 +4,7 @@ import os
 import time
 
 
+from sklearn.linear_model import LogisticRegression
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
@@ -15,7 +16,7 @@ from ssl_bench.utils.train_utils import (AverageMeter, save_checkpoint,
                                          EarlyStopping, get_model,
                                          get_optimizer, get_lr_scheduler)
 from ssl_bench.utils.eval_utils import (
-    calculate_plain_accuracy,
+    calculate_balanced_accuracy,
     eval_model,
 )
 from ssl_bench.utils.arg_parser import parse_args
@@ -32,7 +33,7 @@ def setup_training(args, method_config: HyperparamSpace):
         ValueError: if dataset not found in config
 
     Returns:
-        tuple: model, optimizer, scheduler, train_loader, val_loader, test_loader
+        tuple: model, optimizer, scheduler, train_loader, unlabel_loader, val_loader, test_loader
     """
     if args.dataset_name not in dataset_configs:
         raise ValueError(f"Dataset {args.dataset_name} not found in config.")
@@ -42,6 +43,7 @@ def setup_training(args, method_config: HyperparamSpace):
     for key, value in method_config.rvs().items():
         setattr(args, key, value)
         hyper_strs.append(f'{key}={value}')
+    logging.info(f"Hypers: {hyper_strs}")
 
     model_dir = "_".join(hyper_strs)
     args.train_dir = os.path.join(args.base_train_dir, model_dir)
@@ -54,13 +56,14 @@ def setup_training(args, method_config: HyperparamSpace):
     model = get_model(args).to(args.device)
     optimizer = get_optimizer(args, model)
     scheduler = get_lr_scheduler(optimizer, args)
-    logger.info(f"Loading dataset: {args.dataset_name}")
-    train_loader, _, val_loader, test_loader = get_dataloaders(args)
+    train_loader, unlabel_loader, val_loader, test_loader = get_dataloaders(args)
 
-    return model, optimizer, scheduler, train_loader, val_loader, test_loader
+    return model, optimizer, scheduler, train_loader, unlabel_loader, val_loader, test_loader
 
 
-def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
+def train_one_epoch(
+    args, model, optimizer, scheduler, epoch, label_loader=None, unlabel_loader=None
+):
     """Train model for one epoch
 
     Args:
@@ -68,8 +71,9 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
         model (torch.nn.Module): model to train
         optimizer (torch.optim.Optimizer): optimizer
         scheduler (torch.optim.lr_scheduler.LambdaLR): learning rate scheduler
-        train_loader (torch.utils.data.DataLoader): training data loader
         epoch (int): current epoch
+        label_loader (torch.utils.data.DataLoader): training data loader
+        unlabel_loader (torch.utils.data.DataLoader): unlabeled data loader
 
     Returns:
         float: average loss for the epoch
@@ -81,59 +85,75 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
     args.writer.add_scalar('train/lr', scheduler.get_last_lr()[0], epoch)
     print(f"Epoch {epoch+1} - Learning Rate: {scheduler.get_last_lr()[0]}")
 
-    batch_time, data_time, labeled_loss = AverageMeter(), AverageMeter(), AverageMeter()
+    batch_time, data_time, total_loss = AverageMeter(), AverageMeter(), AverageMeter()
 
     all_logits = []
     all_labels = []
 
-    labeledtrain_iter = iter(train_loader)
+    if label_loader is not None:
+        labeledtrain_iter = iter(label_loader)
+
+    if unlabel_loader is not None:
+        unlabeledtrain_iter = iter(unlabel_loader)
+
+    # TODO: should work for unlabeled set too
     n_steps_per_epoch = args.nimg_per_epoch // args.labeledtrain_batchsize
+    
     p_bar = tqdm(range(n_steps_per_epoch), disable=False)
 
     start_time = time.time()
 
     for batch_idx in range(n_steps_per_epoch):
-        try:
-            l_input, l_labels = next(labeledtrain_iter)
-        except StopIteration:
-            labeledtrain_iter = iter(train_loader)
-            l_input, l_labels = next(labeledtrain_iter)
-
         data_time.update(time.time() - start_time)
-
-        # l_input, l_labels = l_input.to(args.device).float(), l_labels.to(args.device).long()
 
         optimizer.zero_grad()  # Zero gradients before backward pass
 
+        if label_loader is not None:
+            try:
+                l_input, l_labels = next(labeledtrain_iter)
+            except StopIteration:
+                labeledtrain_iter = iter(label_loader)
+                l_input, l_labels = next(labeledtrain_iter)
+        else:
+            l_input, l_labels = None, None
+
+        if unlabel_loader is not None:
+            try:
+                u_input = next(unlabeledtrain_iter)
+            except StopIteration:
+                unlabeledtrain_iter = iter(unlabel_loader)
+                u_input = next(unlabeledtrain_iter)
+        else:
+            u_input = None
+
         logits, loss, supervised_loss, unsupervised_loss = model.forward(
-            l_input, l_labels)
+            l_input, l_labels, u_input)
 
-        total_loss = supervised_loss + (unsupervised_loss if unsupervised_loss is not None else 0)
-
-        # Accumulate logits & labels
-        all_logits.append(logits.detach().cpu())
-        all_labels.append(l_labels.detach().cpu())
+        if logits is not None:
+            all_logits.append(logits.detach().cpu())
+        if l_labels is not None:
+            all_labels.append(l_labels.detach().cpu())
 
         # Weighted update for correct loss averaging
         batch_size = l_labels.size(0)
-        labeled_loss.update(supervised_loss.item(), batch_size)
+        total_loss.update(loss, batch_size)
 
-        total_loss.backward()
+        loss.backward()
         optimizer.step()
 
         batch_time.update(time.time() - start_time)
         start_time = time.time()
 
-        p_bar.set_description(f"Epoch {epoch+1} - Loss: {labeled_loss.avg:.4f}")
+        p_bar.set_description(f"Epoch {epoch+1} - Loss: {total_loss.avg:.4f}")
         p_bar.update()
 
     p_bar.close()
     scheduler.step()
 
-    all_logits = torch.cat(all_logits)
-    all_labels = torch.cat(all_labels)
+    all_logits = torch.cat(all_logits) if all_logits else None
+    all_labels = torch.cat(all_labels) if all_labels else None
 
-    return labeled_loss.avg, all_logits, all_labels
+    return total_loss.avg, all_logits, all_labels
 
 
 def train(args, method_config):
@@ -147,38 +167,69 @@ def train(args, method_config):
         float: best validation accuracy
         float: test accuracy
     """
-
     start_time = time.time()
 
-    model, optimizer, scheduler, train_loader, val_loader, test_loader = setup_training(
-        args, method_config)
+    model, optimizer, scheduler, label_loader, unlabel_loader, \
+        val_loader, test_loader = setup_training(args, method_config)
     writer = SummaryWriter(args.train_dir)
     args.writer = writer
     best_val_acc, total_time = 0, 0
     current_count = 0  # for early stopping, when continue training
     early_stopping = EarlyStopping(patience=args.patience, initial_count=current_count)
 
+    clf = None
+
     for epoch in range(args.start_epoch, args.train_epoch):
         start_time = time.time()
-        train_loss, logits, labels = train_one_epoch(
-            args, model, optimizer, scheduler, train_loader, epoch)
-        train_pred = logits.cpu().detach().numpy().argmax(axis=1)
+
+        train_loss, probs, labels = train_one_epoch(
+            args, model, optimizer, scheduler, epoch, label_loader, unlabel_loader)
+
+        if args.implementation == 'BarlowTwins':
+            model.eval()
+
+            all_features = []
+            all_labels = []
+
+            for batch_idx, (l_input, l_labels) in enumerate(label_loader):
+                l_input, l_labels = l_input.to(
+                    args.device, non_blocking=True), l_labels.to(args.device, non_blocking=True)
+
+                with torch.no_grad():
+                    features = model.eval_forward(l_input, l_labels)[0]
+
+                all_features.append(features.cpu())
+                all_labels.append(l_labels.cpu())
+
+            all_features = torch.cat(all_features)
+            all_labels = torch.cat(all_labels)
+
+            if (epoch % 5) == 0:
+                print("Fitting classifier")
+                clf = LogisticRegression(random_state=0, class_weight='balanced')
+                clf.fit(all_features, all_labels)
+                print("Classifier fitted")
+
+            probs = clf.predict_proba(all_features)
+            probs = torch.tensor(probs, dtype=torch.float32).to(args.device)
+            labels = all_labels.to(args.device)
+
+        train_pred = probs.cpu().detach().numpy().argmax(axis=1)
         train_targets = labels.cpu().detach().numpy()
-        train_acc = calculate_plain_accuracy(train_pred, train_targets)
+        train_acc = calculate_balanced_accuracy(train_pred, train_targets)
 
-        # Validation
-        val_metrics = eval_model(args, val_loader, model, args.weights)
+        val_metrics = eval_model(args, val_loader, model, args.weights, clf)
 
-        if val_metrics['plain_accuracy'] > best_val_acc:
-            best_val_acc = val_metrics['plain_accuracy']
+        if val_metrics['balanced_accuracy'] > best_val_acc:
+            best_val_acc = val_metrics['balanced_accuracy']
 
-        early_stopping(val_metrics['plain_accuracy'])
+        early_stopping(val_metrics['balanced_accuracy'])
 
         # Logging
         print(f"Epoch {epoch+1} - Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, ")
         writer.add_scalar('train/loss', train_loss, epoch)
-        writer.add_scalar('train/accuracy', train_acc, epoch)
-        writer.add_scalar('val/accuracy', val_metrics['plain_accuracy'], epoch)
+        writer.add_scalar('train/balanced_accuracy', train_acc, epoch)
+        writer.add_scalar('val/plain_accuracy', val_metrics['plain_accuracy'], epoch)
         writer.add_scalar('val/loss', val_metrics['loss'], epoch)
         writer.add_scalar('val/balanced_accuracy', val_metrics['balanced_accuracy'], epoch)
         writer.add_scalar('val/auroc', val_metrics['auroc'], epoch)
@@ -192,13 +243,13 @@ def train(args, method_config):
                 'optimizer': optimizer.state_dict(),
                 'scheduler': scheduler.state_dict()
             },
-            val_metrics['plain_accuracy'] > best_val_acc,
+            val_metrics['balanced_accuracy'] > best_val_acc,
             args.train_dir
         )
 
         total_time += time.time() - start_time
 
-        print(f"Validation Accuracy: {val_metrics['plain_accuracy']:.4f}")
+        print(f"Validation Accuracy: {val_metrics['balanced_accuracy']:.4f}")
         print(f"Early Stopping Count: {early_stopping.counter}")
 
         if early_stopping.early_stop:
@@ -210,10 +261,10 @@ def train(args, method_config):
             break
 
     # Final Testing
-    test_metrics = eval_model(args, test_loader, model, args.weights)
-    test_acc = test_metrics['plain_accuracy']
+    test_metrics = eval_model(args, test_loader, model, args.weights, clf)
+    test_acc = test_metrics['balanced_accuracy']
 
-    writer.add_scalar('test/accuracy', test_acc, epoch)
+    writer.add_scalar('test/accuracy', test_metrics['plain_accuracy'], epoch)
     writer.add_scalar('test/balanced_accuracy', test_metrics['balanced_accuracy'], epoch)
     writer.add_scalar('test/auroc', test_metrics['auroc'], epoch)
     writer.add_scalar('test/auprc', test_metrics['auprc'], epoch)
@@ -224,11 +275,15 @@ def train(args, method_config):
                    'total_epochs': epoch + 1, 'total_time': total_time}, f)
 
     writer.close()
-    return best_val_acc, test_metrics['plain_accuracy']
+    return best_val_acc, test_metrics['balanced_accuracy']
 
 
 def main(args):
     method_config = method_configs[args.implementation]
+    log_path = os.path.join(args.train_dir, 'logging.log')
+    os.makedirs(args.train_dir, exist_ok=True)
+    logging.basicConfig(filename=log_path, encoding='utf-8', level=logging.INFO)
+    logging.info(f"Args: {args}")
 
     # loop until desired duration has elapsed
     start_time = time.time()

@@ -33,9 +33,9 @@ def get_dataloaders(args):
     dataset_mean = dataset_configs[args.dataset_name]['dataset_mean']
     dataset_std = dataset_configs[args.dataset_name]['dataset_std']
     image_size = dataset_configs[args.dataset_name]['image_size']
-    
+
     transform_weak = transforms.Compose([
-        transforms.ToPILImage(),
+        transforms.Grayscale(num_output_channels=3),
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
         transforms.ToTensor(),
@@ -43,7 +43,7 @@ def get_dataloaders(args):
     ])
 
     transform_strong = transforms.Compose([
-        transforms.ToPILImage(),
+        transforms.Grayscale(num_output_channels=3),
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
         RandAugment(),
@@ -85,6 +85,27 @@ def get_dataloaders(args):
 
         transform_eval = transforms.Compose([
             transforms.ToPILImage(),
+            transforms.Grayscale(num_output_channels=3),
+            transforms.RandomHorizontalFlip(),
+            transforms.Resize(400),
+            transforms.CenterCrop(320),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=dataset_mean, std=dataset_std)
+        ])
+
+    elif dataset_name == "CheXpert2":
+        transform_labeledtrain = transforms.Compose([
+            # transforms.ToPILImage(),
+            transforms.Grayscale(num_output_channels=3),
+            transforms.RandomHorizontalFlip(),
+            transforms.Resize(400),
+            transforms.CenterCrop(320),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=dataset_mean, std=dataset_std)
+        ])
+
+        transform_eval = transforms.Compose([
+            # transforms.ToPILImage(),
             transforms.Grayscale(num_output_channels=3),
             transforms.RandomHorizontalFlip(),
             transforms.Resize(400),
