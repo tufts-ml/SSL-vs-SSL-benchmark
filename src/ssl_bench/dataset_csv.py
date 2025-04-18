@@ -33,7 +33,7 @@ class LabeledImageCSVDataset(VisionDataset):
     def __len__(self):
         return self.data.shape[0]
 
-    def __getitem__(self, index):
+    def get_image(self, index):
         if torch.is_tensor(index):
             index = index.item()
 
@@ -43,6 +43,9 @@ class LabeledImageCSVDataset(VisionDataset):
         # Convert the image to PIL format if it’s not already
         if isinstance(image, np.ndarray):
             image = Image.fromarray(image)
+
+    def __getitem__(self, index):
+        image = self.get_image(index)
 
         rows, cols = self.data.shape
 
@@ -78,7 +81,7 @@ class UnlabeledImageCSVDataset(LabeledImageCSVDataset):
         super().__init__(csv_file, root_dir, transform=transform)
 
 
-class CheXpertDataset(VisionDataset):
+class CheXpertDataset(LabeledImageCSVDataset):
     """Dataset class for loading images from the CheXpert dataset.
 
     Args:
@@ -104,21 +107,8 @@ class CheXpertDataset(VisionDataset):
                               'Atelectasis', 'Pneumothorax',
                               'Pleural Effusion']
 
-    def __len__(self):
-        return self.data.shape[0]
-
     def __getitem__(self, index):
-        if torch.is_tensor(index):
-            index = index.item()
-
-        img_path = self.data.iloc[index, 0]
-        img_name = os.path.join(self.root_dir, img_path)
-
-        if not os.path.exists(img_name):
-            print(f"File not found: {img_name}")
-            return None, None
-
-        image = io.imread(img_name)
+        image = self.get_image(index)
         labels = self.data.loc[index, self.label_columns]
         labels = labels.fillna(0)  # Replace NaN values with 0
         labels = labels.astype(np.int32).values
