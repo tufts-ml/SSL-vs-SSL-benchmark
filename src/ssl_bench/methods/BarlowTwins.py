@@ -8,7 +8,7 @@ class BarlowTwins(MethodWrapper):
         super(BarlowTwins, self).__init__(backbone, args)  # Pass required arguments
         self.backbone = backbone
         self.projection_head = BarlowTwinsProjectionHead(
-            512, 2048, 2048)
+            512, 1024, 1024)
         self.barlow_twins_loss = BarlowTwinsLoss(
             lambda_param=args.lambd if hasattr(args, 'lambd') else 5e-3)
 

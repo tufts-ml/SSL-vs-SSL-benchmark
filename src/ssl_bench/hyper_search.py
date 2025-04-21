@@ -8,6 +8,7 @@ from sklearn.linear_model import LogisticRegression
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+import numpy as np
 
 
 from ssl_bench.config import dataset_configs, method_configs, HyperparamSpace
@@ -18,8 +19,21 @@ from ssl_bench.utils.train_utils import (AverageMeter, save_checkpoint,
 from ssl_bench.utils.eval_utils import (
     calculate_balanced_accuracy,
     eval_model,
+    log_metrics_to_tensorboard
 )
 from ssl_bench.utils.arg_parser import parse_args
+
+
+def set_seed(seed):
+    """Set random seed for reproducibility
+
+    Args:
+        seed (int): random seed
+    """
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
 
 
 def setup_training(args, method_config: HyperparamSpace):
@@ -85,23 +99,29 @@ def train_one_epoch(
     args.writer.add_scalar('train/lr', scheduler.get_last_lr()[0], epoch)
     print(f"Epoch {epoch+1} - Learning Rate: {scheduler.get_last_lr()[0]}")
 
-    batch_time, data_time, labeled_loss = AverageMeter(), AverageMeter(), AverageMeter()
+    batch_time, data_time, total_loss = AverageMeter(), AverageMeter(), AverageMeter()
 
     all_logits = []
     all_labels = []
 
+    if label_loader is not None:
+        labeledtrain_iter = iter(label_loader)
+
+    if unlabel_loader is not None:
+        unlabeledtrain_iter = iter(unlabel_loader)
+
     n_steps_per_epoch = args.nimg_per_epoch // args.labeledtrain_batchsize
+
     p_bar = tqdm(range(n_steps_per_epoch), disable=False)
 
     start_time = time.time()
 
-    for batch_idx in range(n_steps_per_epoch):
+    for _ in range(n_steps_per_epoch):
         data_time.update(time.time() - start_time)
 
         optimizer.zero_grad()  # Zero gradients before backward pass
 
         if label_loader is not None:
-            labeledtrain_iter = iter(label_loader)
             try:
                 l_input, l_labels = next(labeledtrain_iter)
             except StopIteration:
@@ -111,7 +131,6 @@ def train_one_epoch(
             l_input, l_labels = None, None
 
         if unlabel_loader is not None:
-            unlabeledtrain_iter = iter(unlabel_loader)
             try:
                 u_input = next(unlabeledtrain_iter)
             except StopIteration:
@@ -129,8 +148,8 @@ def train_one_epoch(
             all_labels.append(l_labels.detach().cpu())
 
         # Weighted update for correct loss averaging
-        batch_size = l_labels.size(0)
-        labeled_loss.update(supervised_loss, batch_size)
+        batch_size = l_labels.size(0) if l_labels is not None else u_input.size(0)
+        total_loss.update(loss, batch_size)
 
         loss.backward()
         optimizer.step()
@@ -138,7 +157,7 @@ def train_one_epoch(
         batch_time.update(time.time() - start_time)
         start_time = time.time()
 
-        p_bar.set_description(f"Epoch {epoch+1} - Loss: {labeled_loss.avg:.4f}")
+        p_bar.set_description(f"Epoch {epoch+1} - Loss: {total_loss.avg:.4f}")
         p_bar.update()
 
     p_bar.close()
@@ -147,7 +166,7 @@ def train_one_epoch(
     all_logits = torch.cat(all_logits) if all_logits else None
     all_labels = torch.cat(all_labels) if all_labels else None
 
-    return labeled_loss.avg, all_logits, all_labels
+    return total_loss.avg, all_logits, all_labels
 
 
 def train(args, method_config):
@@ -168,8 +187,7 @@ def train(args, method_config):
     writer = SummaryWriter(args.train_dir)
     args.writer = writer
     best_val_acc, total_time = 0, 0
-    current_count = 0  # for early stopping, when continue training
-    early_stopping = EarlyStopping(patience=args.patience, initial_count=current_count)
+    early_stopping = EarlyStopping(patience=args.patience)
 
     clf = None
 
@@ -186,7 +204,8 @@ def train(args, method_config):
             all_labels = []
 
             for batch_idx, (l_input, l_labels) in enumerate(label_loader):
-                l_input, l_labels = l_input.to(args.device), l_labels.to(args.device)
+                l_input, l_labels = l_input.to(
+                    args.device, non_blocking=True), l_labels.to(args.device, non_blocking=True)
 
                 with torch.no_grad():
                     features = model.eval_forward(l_input, l_labels)[0]
@@ -197,11 +216,8 @@ def train(args, method_config):
             all_features = torch.cat(all_features)
             all_labels = torch.cat(all_labels)
 
-            if (epoch % 10) == 0:
-                print("Fitting classifier")
-                clf = LogisticRegression(random_state=0, class_weight='balanced')
-                clf.fit(all_features, all_labels)
-                print("Classifier fitted")
+            if (epoch % 5) == 0:
+                clf = fit_logistic_regression(args, model, all_features, all_labels, val_loader)
 
             probs = clf.predict_proba(all_features)
             probs = torch.tensor(probs, dtype=torch.float32).to(args.device)
@@ -222,11 +238,7 @@ def train(args, method_config):
         print(f"Epoch {epoch+1} - Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, ")
         writer.add_scalar('train/loss', train_loss, epoch)
         writer.add_scalar('train/balanced_accuracy', train_acc, epoch)
-        writer.add_scalar('val/plain_accuracy', val_metrics['plain_accuracy'], epoch)
-        writer.add_scalar('val/loss', val_metrics['loss'], epoch)
-        writer.add_scalar('val/balanced_accuracy', val_metrics['balanced_accuracy'], epoch)
-        writer.add_scalar('val/auroc', val_metrics['auroc'], epoch)
-        writer.add_scalar('val/auprc', val_metrics['auprc'], epoch)
+        log_metrics_to_tensorboard(writer, epoch, 'val', val_metrics)
 
         save_checkpoint(
             {
@@ -257,11 +269,7 @@ def train(args, method_config):
     test_metrics = eval_model(args, test_loader, model, args.weights, clf)
     test_acc = test_metrics['balanced_accuracy']
 
-    writer.add_scalar('test/accuracy', test_metrics['plain_accuracy'], epoch)
-    writer.add_scalar('test/balanced_accuracy', test_metrics['balanced_accuracy'], epoch)
-    writer.add_scalar('test/auroc', test_metrics['auroc'], epoch)
-    writer.add_scalar('test/auprc', test_metrics['auprc'], epoch)
-    writer.add_scalar('test/tpr_at_fpr_5', test_metrics['tpr_at_fpr_5'], epoch)
+    log_metrics_to_tensorboard(writer, epoch, 'test', test_metrics)
 
     with open(os.path.join(args.train_dir, 'training_summary.json'), 'w') as f:
         json.dump({'best_val_accuracy': best_val_acc, 'test_accuracy': test_acc,
@@ -269,6 +277,59 @@ def train(args, method_config):
 
     writer.close()
     return best_val_acc, test_metrics['balanced_accuracy']
+
+
+def fit_logistic_regression(args, model, features, labels, val_loader):
+    """Fit a logistic regression model to the features and labels.
+
+    Args:
+        args (Namespace): parsed arguments
+        model (torch.nn.Module): model to train
+        features (torch.Tensor): features from the model
+        labels (torch.Tensor): labels from the dataset
+        val_loader (torch.utils.data.DataLoader): validation data loader
+
+    Returns:
+        LogisticRegression: fitted logistic regression model
+    """
+    features = features.cpu().detach().numpy()
+    labels = labels.cpu().detach().numpy()
+
+    reg = 10 ** np.random.uniform(-3, 3, size=10)
+    best_val_acc = 0
+    best_clf = None
+
+    for i in range(10):
+        clf = LogisticRegression(random_state=args.seed, C=reg[i], max_iter=1000)
+        clf.fit(features, labels)
+
+        # Evaluate the model on the validation set
+        val_features = []
+        val_labels = []
+        for batch_idx, (v_input, v_labels) in enumerate(val_loader):
+            v_input, v_labels = v_input.to(args.device, non_blocking=True), v_labels.to(
+                args.device, non_blocking=True)
+            with torch.no_grad():
+                v_features = model.eval_forward(v_input, v_labels)[0]
+            val_features.append(v_features.cpu())
+            val_labels.append(v_labels.cpu())
+
+        val_features = torch.cat(val_features)
+        val_labels = torch.cat(val_labels)
+        val_probs = clf.predict_proba(val_features)
+        val_probs = torch.tensor(val_probs, dtype=torch.float32).to(args.device)
+        val_labels = val_labels.to(args.device)
+        val_pred = val_probs.cpu().detach().numpy().argmax(axis=1)
+        val_targets = val_labels.cpu().detach().numpy()
+        val_acc = calculate_balanced_accuracy(val_pred, val_targets)
+
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            best_clf = clf
+            print(f"New Best Classifier! Val Acc: {best_val_acc}")
+            print(f"L2 Regularization: {clf.C}")
+
+    return best_clf
 
 
 def main(args):
@@ -279,6 +340,7 @@ def main(args):
     os.makedirs(args.train_dir, exist_ok=True)
     logging.basicConfig(filename=log_path, encoding='utf-8', level=logging.INFO)
     logging.info(f"Args: {args}")
+    set_seed(args.seed)
 
     # loop until desired duration has elapsed
     start_time = time.time()
