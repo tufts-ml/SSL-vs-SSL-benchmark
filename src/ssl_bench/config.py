@@ -43,29 +43,43 @@ dataset_configs = {
                  'num_classes': 2},
 }
 
+class TransformTwice:
+    def __init__(self, transform_fn):
+        self.transform_fn = transform_fn
+
+    def __call__(self, x):
+        out1 = self.transform_fn(x)
+        out2 = self.transform_fn(x)
+
+        return out1, out2
+
 def get_transformations(args):
     dataset_name = args.dataset_name
     method = args.implementation
 
     dataset_mean = dataset_configs[dataset_name]['dataset_mean']
     dataset_std = dataset_configs[dataset_name]['dataset_std']
-    image_size = dataset_configs[dataset_name]['image_size']
+    image_dim = dataset_configs[dataset_name]['image_size']
     
     # dealing with issue in transformation dictionary for methods
     # expecting a single value when image_size is a tuple
-    if isinstance(image_size, tuple):
-        square_img_size = image_size[0]
+    if isinstance(image_dim, tuple):
+        img_size = image_dim[0]
     else:
-        square_img_size = image_size
+        img_size = image_dim
 
+    # add in a new entry for pretrained transforms (delete dict below and just have one
+    # transformation for all the datasets)
+
+    # training from scratch 
     dataset_base_transformations = {
         'TMED2': {
             "l_train": transforms.Compose([
                 transforms.Grayscale(num_output_channels=3),
                 transforms.Lambda(apply_clahe),
                 transforms.RandomHorizontalFlip(),
-                transforms.RandomCrop(size=image_size,
-                                        padding=int(square_img_size*0.125),
+                transforms.RandomCrop(size=img_size,
+                                        padding=int(img_size*0.125),
                                         padding_mode='reflect'),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=dataset_mean, std=dataset_std)
@@ -92,24 +106,24 @@ def get_transformations(args):
         },
         'IDRID': {
             "l_train": transforms.Compose([
-                transforms.Resize(size=image_size),
+                transforms.Resize(size=img_size),
                 transforms.Lambda(apply_clahe),
                 transforms.RandomHorizontalFlip(),
-                transforms.RandomCrop(size=image_size,
-                                    padding=int(square_img_size*0.125),
+                transforms.RandomCrop(size=img_size,
+                                    padding=int(img_size*0.125),
                                     padding_mode='reflect'),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=dataset_mean, std=dataset_std)
             ]),
             "u_train": None,
             "val": transforms.Compose([
-                transforms.Resize(size=image_size),
+                transforms.Resize(size=img_size),
                 transforms.Lambda(apply_clahe),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=dataset_mean, std=dataset_std)
             ]),
             "test": transforms.Compose([
-                transforms.Resize(size=image_size),
+                transforms.Resize(size=img_size),
                 transforms.Lambda(apply_clahe),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=dataset_mean, std=dataset_std)
@@ -144,12 +158,8 @@ def get_transformations(args):
                 transforms.ToTensor(),
                 transforms.Normalize(mean=dataset_mean, std=dataset_std)
             ])
-        }
-    }
-
-
-    method_transformations = {
-        "Pretrained_IDRID": {
+        },
+        'Pretrained': {
             "l_train": transforms.Compose([
                 transforms.Grayscale(num_output_channels=3),
                 ResNet18_Weights.IMAGENET1K_V1.transforms(),
@@ -163,7 +173,11 @@ def get_transformations(args):
                 transforms.Grayscale(num_output_channels=3),
                 ResNet18_Weights.IMAGENET1K_V1.transforms(),
             ])
-        },
+        }
+    }
+
+
+    method_transformations = {
         "LabelOnlyBaseline": {
             "l_train": None,
             "u_train": None,
@@ -175,47 +189,36 @@ def get_transformations(args):
             "u_train": None,
             "val": None,
             "test": None
+        },
+        "BarlowTwins": {
+            "l_train": None,
+            "u_train": TransformTwice(dataset_base_transformations[dataset_name]["l_train"]),
+            "val": None,
+            "test": None
         }
     }
 
+    # do a .update on the original dataset transformations using the entries in method_transformations
+    # --dataset_basetransform[dataset].update(method_transformation[method])
+    # then have code to unpack
+
     if dataset_name not in dataset_base_transformations:
         raise NotImplementedError(f"Must add in base transformations for dataset {dataset_name}")
-    l_train_transform, u_train_transform, val_transform, test_transform = None, None, None, None
-    pretrained_idrid = args.use_pretrained and (dataset_name == "IDRID")
+    pretrained = args.use_pretrained
 
-    if (method in method_transformations) or pretrained_idrid:
-        if pretrained_idrid:
-            entry = method_transformations["Pretrained_IDRID"]
-        else:
-            entry = method_transformations[method]
+    data_partitions = list(dataset_base_transformations['Pretrained'].keys())
+    transformation_key = "Pretrained" if pretrained else dataset_name
 
-        
-        
-        # add logic here for transforming unlabeled data
-        if entry["u_train"] is None:
-            u_train_transform = dataset_base_transformations[dataset_name]["u_train"]
-        else:
-            if method == "BarlowTwins":
-                pass
-
-        if entry["l_train"] is None:
-            l_train_transform = dataset_base_transformations[dataset_name]["l_train"]
-        else:
-            l_train_transform = entry["l_train"]
-
-        if entry["val"] is None:
-            val_transform = dataset_base_transformations[dataset_name]["val"]
-        else:
-            val_transform = entry['val']
-
-        if entry["test"] is None:
-            test_transform = dataset_base_transformations[dataset_name]["test"]
-        else:
-            test_transform = entry['test']
+    if (method in method_transformations):
+        for split in data_partitions:
+            if transformation_key == "Pretrained" and dataset_name == "CheXpert":
+                dataset_base_transformations[transformation_key][split] = transforms.Compose([transforms.ToPILImage(), dataset_base_transformations[transformation_key][split]])
+            if method_transformations[method][split] != None:
+                dataset_base_transformations[transformation_key][split] = method[split]
+    
     else:
         raise NotImplementedError(f"Must add in transformations for method: {method}")
-
-    breakpoint()
+    l_train_transform, u_train_transform, val_transform, test_transform = list(dataset_base_transformations[transformation_key].values())
     return l_train_transform, u_train_transform, val_transform, test_transform
 
 
