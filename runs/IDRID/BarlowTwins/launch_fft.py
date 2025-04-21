@@ -30,7 +30,7 @@ launch_args = [
     "--u_root_dataset_path /cluster/tufts/hugheslab/datasets/AIROGS/Images_0/0",
 
     # DataLoader config
-    "--labeledtrain_batchsize 32",
+    "--labeledtrain_batchsize 128",
     "--unlabeledtrain_batchsize 128",
     "--num_workers 8",
 
@@ -40,7 +40,7 @@ launch_args = [
     "--arch resnet18",
 
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/more_images/lp",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/log_reg/fft",
 
     # optimization config
     "--train_epoch 100",
