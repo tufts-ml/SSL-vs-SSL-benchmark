@@ -35,6 +35,7 @@ def set_seed(seed):
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
 
+
 def setup_training(args, method_config: HyperparamSpace):
     """Set up training environment
 
@@ -110,7 +111,7 @@ def train_one_epoch(
         unlabeledtrain_iter = iter(unlabel_loader)
 
     n_steps_per_epoch = args.nimg_per_epoch // args.labeledtrain_batchsize
-    
+
     p_bar = tqdm(range(n_steps_per_epoch), disable=False)
 
     start_time = time.time()
@@ -217,7 +218,7 @@ def train(args, method_config):
 
             if (epoch % 5) == 0:
                 clf = fit_logistic_regression(args, model, all_features, all_labels, val_loader)
-                
+
             probs = clf.predict_proba(all_features)
             probs = torch.tensor(probs, dtype=torch.float32).to(args.device)
             labels = all_labels.to(args.device)
@@ -277,6 +278,7 @@ def train(args, method_config):
     writer.close()
     return best_val_acc, test_metrics['balanced_accuracy']
 
+
 def fit_logistic_regression(args, model, features, labels, val_loader):
     """Fit a logistic regression model to the features and labels.
 
@@ -292,25 +294,26 @@ def fit_logistic_regression(args, model, features, labels, val_loader):
     """
     features = features.cpu().detach().numpy()
     labels = labels.cpu().detach().numpy()
-    
-    reg = 10 ** np.random.uniform(-3, 1, size=10)
+
+    reg = 10 ** np.random.uniform(-3, 3, size=10)
     best_val_acc = 0
     best_clf = None
-    
+
     for i in range(10):
-        clf = LogisticRegression(random_state=args.seed, C=reg[i])
+        clf = LogisticRegression(random_state=args.seed, C=reg[i], max_iter=1000)
         clf.fit(features, labels)
-        
+
         # Evaluate the model on the validation set
         val_features = []
         val_labels = []
         for batch_idx, (v_input, v_labels) in enumerate(val_loader):
-            v_input, v_labels = v_input.to(args.device, non_blocking=True), v_labels.to(args.device, non_blocking=True)
+            v_input, v_labels = v_input.to(args.device, non_blocking=True), v_labels.to(
+                args.device, non_blocking=True)
             with torch.no_grad():
                 v_features = model.eval_forward(v_input, v_labels)[0]
             val_features.append(v_features.cpu())
             val_labels.append(v_labels.cpu())
-            
+
         val_features = torch.cat(val_features)
         val_labels = torch.cat(val_labels)
         val_probs = clf.predict_proba(val_features)
@@ -319,14 +322,15 @@ def fit_logistic_regression(args, model, features, labels, val_loader):
         val_pred = val_probs.cpu().detach().numpy().argmax(axis=1)
         val_targets = val_labels.cpu().detach().numpy()
         val_acc = calculate_balanced_accuracy(val_pred, val_targets)
-        
+
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             best_clf = clf
             print(f"New Best Classifier! Val Acc: {best_val_acc}")
             print(f"L2 Regularization: {clf.C}")
-            
+
     return best_clf
+
 
 def main(args):
     method_config = method_configs[args.implementation]
