@@ -41,6 +41,7 @@ launch_args = [
 
     # output location
     "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/log_reg/fft",
+    "--seed 123",
 
     # optimization config
     "--train_epoch 100",

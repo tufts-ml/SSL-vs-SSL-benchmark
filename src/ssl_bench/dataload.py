@@ -107,6 +107,7 @@ def get_dataloaders(args):
         print("Using pretrained model and transforms")
         pretrained_transforms = ResNet18_Weights.IMAGENET1K_V1.transforms()
         transform_labeledtrain = transforms.Compose([
+            transforms.Resize(size=image_size),
             transforms.RandomCrop(size=image_size,
                                   padding=int(image_size*0.125),
                                   padding_mode='reflect'),
@@ -120,6 +121,7 @@ def get_dataloaders(args):
             transforms.Normalize(mean=imagenet_mean, std=imagenet_std),
         ])
         transform_eval = transforms.Compose([
+            transforms.Resize(size=image_size),
             transforms.CenterCrop(image_size),
             transforms.Grayscale(num_output_channels=3),
             transforms.ToTensor(),
