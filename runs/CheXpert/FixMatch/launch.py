@@ -37,7 +37,7 @@ launch_args = [
     # "--use_pretrained",
     "--arch resnet18",
 
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/CheXpert/FixMatch/test",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/CheXpert/FixMatch/test2"
 
 
     "--train_epoch 100",
