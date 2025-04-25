@@ -73,6 +73,7 @@ def evaluate_all_metrics(probs, labels):
         'tpr_at_fpr_5': calculate_tpr_at_fpr_5(probs, labels),
     }
 
+
 def log_metrics_to_tensorboard(writer, epoch, phase, metrics):
     """
     Logs metrics to TensorBoard.
@@ -85,6 +86,7 @@ def log_metrics_to_tensorboard(writer, epoch, phase, metrics):
     """
     for key, value in metrics.items():
         writer.add_scalar(f"{phase}/{key}", value, epoch)
+
 
 def calculate_plain_accuracy(preds, labels):
     return (preds == labels).mean() * 100
