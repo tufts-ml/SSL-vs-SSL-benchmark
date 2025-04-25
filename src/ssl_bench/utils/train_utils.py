@@ -7,7 +7,6 @@ import math
 from torch.optim.lr_scheduler import LambdaLR
 from torchvision.models import resnet18, ResNet18_Weights
 import torch.nn.init as init
-import torch.nn as nn
 from ssl_bench.methods.LabelOnlyBaseline import LabelOnlyBaseline
 from ssl_bench.methods.MixUp import MixUp
 from ssl_bench.methods.BarlowTwins import BarlowTwins
@@ -123,12 +122,9 @@ def get_model(args):
                 param.requires_grad = False
 
         # Replace the last fully connected layer
-        if args.implementation == 'BarlowTwins':
-            model.fc = nn.Identity()
-        else:
-            model.fc = torch.nn.Linear(512, args.num_classes)
-            init.normal_(model.fc.weight, mean=0.0, std=0.0001)
-            init.zeros_(model.fc.bias)
+        model.fc = torch.nn.Linear(512, args.num_classes)
+        init.normal_(model.fc.weight, mean=0.0, std=0.0001)
+        init.zeros_(model.fc.bias)
 
         # Ensure the new last layer is trainable
         for param in model.fc.parameters():

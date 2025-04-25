@@ -8,6 +8,7 @@ class SimCLR(MethodWrapper):
     def __init__(self, backbone, args):
         super(SimCLR, self).__init__(backbone, args)
         self.backbone = backbone
+        self.backbone.fc = nn.Identity()
         self.projection_head = nn.Sequential(nn.Linear(512, 512, bias=False), nn.BatchNorm1d(512),
                                              nn.ReLU(inplace=True), nn.Linear(512, 128, bias=True))
         self.temperature = args.temperature
