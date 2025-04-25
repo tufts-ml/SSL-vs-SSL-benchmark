@@ -100,8 +100,8 @@ def get_dataloaders(args):
         raise NotImplementedError(f"Implement dataloading logic for the \
             following dataset: {dataset_name}")
 
-    imagenet_mean = [0.485, 0.456, 0.406]
-    imagenet_std = [0.229, 0.224, 0.225]
+    imagenet_mean = (0.485, 0.456, 0.406)
+    imagenet_std = (0.229, 0.224, 0.225)
 
     if args.use_pretrained:
         print("Using pretrained model and transforms")

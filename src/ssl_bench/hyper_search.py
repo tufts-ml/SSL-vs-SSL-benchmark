@@ -218,15 +218,17 @@ def train(args, method_config):
 
             val_features = []
             val_labels = []
-            for batch_idx, (l_input, l_labels) in enumerate(val_loader):
-                l_input, l_labels = l_input.to(
-                    args.device, non_blocking=True), l_labels.to(args.device, non_blocking=True)
+
+            for batch_idx, (v_input, v_labels) in enumerate(val_loader):
+                v_input = v_input.to(args.device, non_blocking=True)
 
                 with torch.no_grad():
-                    features = model.eval_forward(l_input, l_labels)[0]
+                    features = model.eval_forward(
+                        v_input, v_labels.to(args.device, non_blocking=True))[0]
 
                 val_features.append(features.cpu())
-                val_labels.append(l_labels.cpu())
+                val_labels.append(v_labels.cpu())
+
             val_features = torch.cat(val_features)
             val_labels = torch.cat(val_labels)
 
@@ -322,11 +324,8 @@ def fit_logistic_regression(args, model, train_features, train_labels, val_featu
         clf.fit(train_features, train_labels)
 
         val_probs = clf.predict_proba(val_features)
-        val_probs = torch.tensor(val_probs, dtype=torch.float32).to(args.device)
-        val_labels = val_labels.to(args.device)
-        val_pred = val_probs.cpu().detach().numpy().argmax(axis=1)
-        val_targets = val_labels.cpu().detach().numpy()
-        val_acc = calculate_balanced_accuracy(val_pred, val_targets)
+        val_pred = np.argmax(val_probs, axis=1)
+        val_acc = calculate_balanced_accuracy(val_pred, val_labels)
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
