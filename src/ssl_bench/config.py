@@ -35,7 +35,7 @@ dataset_configs = {
         'nimg_per_epoch': 206,
         'num_classes': 5},
 
-    'CheXpert': {'dataset_mean': (0.5064, 0.5064, 0.5064),
+    'CheXpert2': {'dataset_mean': (0.5064, 0.5064, 0.5064),
                  'dataset_std': (0.2894, 0.2894, 0.2894),
                  'image_size': (320, 390),
                  'class_weights': [0.3027, 0.6973],
@@ -67,9 +67,6 @@ def get_transformations(args):
         img_size = image_dim[0]
     else:
         img_size = image_dim
-
-    # add in a new entry for pretrained transforms (delete dict below and just have one
-    # transformation for all the datasets)
 
     # training from scratch 
     dataset_base_transformations = {
@@ -129,7 +126,7 @@ def get_transformations(args):
                 transforms.Normalize(mean=dataset_mean, std=dataset_std)
             ])
         }, 
-        'CheXpert': {
+        'CheXpert2': {
             "l_train": transforms.Compose([
                 transforms.ToPILImage(),
                 transforms.Grayscale(num_output_channels=3),
@@ -198,26 +195,20 @@ def get_transformations(args):
         }
     }
 
-    # do a .update on the original dataset transformations using the entries in method_transformations
-    # --dataset_basetransform[dataset].update(method_transformation[method])
-    # then have code to unpack
-
     if dataset_name not in dataset_base_transformations:
         raise NotImplementedError(f"Must add in base transformations for dataset {dataset_name}")
+    
     pretrained = args.use_pretrained
-
     data_partitions = list(dataset_base_transformations['Pretrained'].keys())
     transformation_key = "Pretrained" if pretrained else dataset_name
 
     if (method in method_transformations):
         for split in data_partitions:
-            if transformation_key == "Pretrained" and dataset_name == "CheXpert":
-                dataset_base_transformations[transformation_key][split] = transforms.Compose([transforms.ToPILImage(), dataset_base_transformations[transformation_key][split]])
             if method_transformations[method][split] != None:
                 dataset_base_transformations[transformation_key][split] = method[split]
-    
     else:
         raise NotImplementedError(f"Must add in transformations for method: {method}")
+    
     l_train_transform, u_train_transform, val_transform, test_transform = list(dataset_base_transformations[transformation_key].values())
     return l_train_transform, u_train_transform, val_transform, test_transform
 
