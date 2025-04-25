@@ -40,7 +40,7 @@ launch_args = [
     "--arch resnet18",
 
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/log_reg/fft",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/noaug/fft",
 
     # optimization config
     "--train_epoch 100",
