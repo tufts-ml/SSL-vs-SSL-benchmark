@@ -16,9 +16,9 @@ class BarlowTwins(MethodWrapper):
         self.backbone.train()
 
         u1, u2 = u_data
-        device = next(self.backbone.parameters()).device  # Get the device of the model
+        device = next(self.backbone.parameters()).device 
 
-        u1, u2 = u1.to(device), u2.to(device)  # Move inputs to the correct device
+        u1, u2 = u1.to(device), u2.to(device)
 
         z1_features = self.backbone(u1)
         z2_features = self.backbone(u2)
