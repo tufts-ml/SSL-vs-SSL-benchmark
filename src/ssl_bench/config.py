@@ -21,7 +21,7 @@ dataset_configs = {
               'dataset_std': (0.1426, 0.1426, 0.1426),
               'image_size': 112,
               'class_weights': [0.137, 0.398, 0.192, 0.273],
-              'nimg_per_epoch': 355160,
+              'nimg_per_epoch': 17270,
               'num_classes': 4},
 
     'IDRID': {
@@ -79,5 +79,10 @@ method_configs = {
         "lr": loguniform(1e-5, 1e-2),
         "wd": loguniform(1e-6, 1e-3),
         "conf_threshold": loguniform(0.7, 0.95),
+    }),
+    'BarlowTwins': HyperparamSpace({
+        "lr": loguniform(1e-5, 1e-2),
+        "wd": loguniform(1e-6, 1e-3),
+        "lambd": loguniform(1e-3, 1e-2),
     }),
 }

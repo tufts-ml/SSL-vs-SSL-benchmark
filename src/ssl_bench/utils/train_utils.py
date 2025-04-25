@@ -7,9 +7,11 @@ import math
 from torch.optim.lr_scheduler import LambdaLR
 from torchvision.models import resnet18, ResNet18_Weights
 import torch.nn.init as init
+import torch.nn as nn
 from ssl_bench.methods.LabelOnlyBaseline import LabelOnlyBaseline
 from ssl_bench.methods.MixUp import MixUp
 from ssl_bench.methods.FixMatch import FixMatch
+from ssl_bench.methods.BarlowTwins import BarlowTwins
 import torch.optim as optim
 
 
@@ -121,9 +123,12 @@ def get_model(args):
                 param.requires_grad = False
 
         # Replace the last fully connected layer
-        model.fc = torch.nn.Linear(512, args.num_classes)
-        init.normal_(model.fc.weight, mean=0.0, std=0.0001)
-        init.zeros_(model.fc.bias)
+        if args.implementation == 'BarlowTwins':
+            model.fc = nn.Identity()
+        else:
+            model.fc = torch.nn.Linear(512, args.num_classes)
+            init.normal_(model.fc.weight, mean=0.0, std=0.0001)
+            init.zeros_(model.fc.bias)
 
         # Ensure the new last layer is trainable
         for param in model.fc.parameters():
@@ -139,17 +144,35 @@ def get_model(args):
                                         dropout=0.0,
                                         num_classes=args.num_classes)
 
+        if args.use_pretrained and args.freeze_backbone:
+            print("Freezing layers")
+            for param in model.parameters():
+                param.requires_grad = False
+
+        model.fc = torch.nn.Linear(512, args.num_classes)
+        init.normal_(model.fc.weight, mean=0.0, std=0.0001)
+        init.zeros_(model.fc.bias)
+
+        # Ensure the new last layer is trainable
+        for param in model.fc.parameters():
+            param.requires_grad = True
+
     else:
         raise NameError('Not implemented yet')
 
-    if args.implementation == 'LabelOnlyBaseline':
-        return LabelOnlyBaseline(model, args)
-    elif args.implementation == 'MixUp':
-        return MixUp(model, args)
-    elif args.implementation == 'FixMatch':
-        return FixMatch(model, args)
-    else:
-        raise NameError('Not implemented yet')
+    implementation_map = {
+        'LabelOnlyBaseline': LabelOnlyBaseline,
+        'MixUp': MixUp,
+        'FixMatch': FixMatch,
+        'BarlowTwins': BarlowTwins,
+    }
+
+    model_class = implementation_map.get(args.implementation)
+
+    if model_class is None:
+        raise NameError(f"Invalid implementation: {args.implementation}")
+
+    return model_class(model, args)
 
 
 def get_optimizer(args, model: torch.nn.Module):

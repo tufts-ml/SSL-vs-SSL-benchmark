@@ -70,6 +70,7 @@ def parse_args():
     parser.add_argument('--total_hour', default=50, type=int, help='total hours to run')
 
     parser.add_argument('--train_dir', help='directory to output the result')
+    parser.add_argument('--seed', default=0, type=int, help='seed')
 
     args = parser.parse_args()
 

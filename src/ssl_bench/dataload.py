@@ -18,6 +18,17 @@ class TransformFixMatch:
         return self.weak(x), self.strong(x)
 
 
+class TransformTwice:
+    def __init__(self, transform_fn):
+        self.transform_fn = transform_fn
+
+    def __call__(self, x):
+        out1 = self.transform_fn(x)
+        out2 = self.transform_fn(x)
+
+        return out1, out2
+
+
 def get_dataloaders(args):
     """Get DataLoaders
 
@@ -157,6 +168,10 @@ def get_dataloaders(args):
             root_dir=args.u_root_dataset_path,
             transform=TransformFixMatch(transform_weak, transform_strong)
         )
+        # TODO transform based on the method
+        # unlabel_dataset = UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
+        #                                            root_dir=args.u_root_dataset_path,
+        #                                            transform=TransformTwice(transform_labeledtrain))
     else:
         unlabel_dataset = None
 
@@ -194,6 +209,7 @@ def get_dataloaders(args):
                                                pin_memory=True,
                                                drop_last=True)
     if unlabel_dataset is not None:
+        print("Length of unlabeled dataset: ", len(unlabel_dataset))
         unlabel_loader = torch.utils.data.DataLoader(unlabel_dataset,
                                                      batch_size=args.unlabeledtrain_batchsize,
                                                      shuffle=True,
@@ -204,7 +220,7 @@ def get_dataloaders(args):
         unlabel_loader = None
 
     if valid_dataset is not None:
-        valid_loader = torch.utils.data.DataLoader(valid_dataset, 128,
+        valid_loader = torch.utils.data.DataLoader(valid_dataset, 32,
                                                    shuffle=False, drop_last=False,
                                                    num_workers=args.num_workers,
                                                    pin_memory=True)
@@ -212,7 +228,7 @@ def get_dataloaders(args):
         valid_loader = None
 
     if test_dataset is not None:
-        test_loader = torch.utils.data.DataLoader(test_dataset, 128,
+        test_loader = torch.utils.data.DataLoader(test_dataset, 32,
                                                   shuffle=False, drop_last=False,
                                                   num_workers=args.num_workers,
                                                   pin_memory=True)

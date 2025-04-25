@@ -37,7 +37,7 @@ launch_args = [
     "--arch resnet18",
 
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/LabelOnlyBaseline/Final/fft",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/LabelOnlyBaseline/final/fft",
 
     # optimization config
     "--train_epoch 100",
