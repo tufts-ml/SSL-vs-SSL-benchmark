@@ -222,8 +222,25 @@ def train(args, method_config):
             all_features = torch.cat(all_features)
             all_labels = torch.cat(all_labels)
 
+            val_features = []
+            val_labels = []
+
+            for batch_idx, (v_input, v_labels) in enumerate(val_loader):
+                v_input = v_input.to(args.device, non_blocking=True)
+
+                with torch.no_grad():
+                    features = model.eval_forward(
+                        v_input, v_labels.to(args.device, non_blocking=True))[0]
+
+                val_features.append(features.cpu())
+                val_labels.append(v_labels.cpu())
+
+            val_features = torch.cat(val_features)
+            val_labels = torch.cat(val_labels)
+
             if (epoch % 5) == 0:
-                clf = fit_logistic_regression(args, model, all_features, all_labels, val_loader)
+                clf = fit_logistic_regression(
+                    args, model, all_features, all_labels, val_features, val_labels)
 
             probs = clf.predict_proba(all_features)
             probs = torch.tensor(probs, dtype=torch.float32).to(args.device)
@@ -285,49 +302,36 @@ def train(args, method_config):
     return best_val_acc, test_metrics['balanced_accuracy']
 
 
-def fit_logistic_regression(args, model, features, labels, val_loader):
-    """Fit a logistic regression model to the features and labels.
+def fit_logistic_regression(args, model, train_features, train_labels, val_features, val_labels):
+    """Fit logistic regression model
 
     Args:
         args (Namespace): parsed arguments
         model (torch.nn.Module): model to train
-        features (torch.Tensor): features from the model
-        labels (torch.Tensor): labels from the dataset
-        val_loader (torch.utils.data.DataLoader): validation data loader
+        train_features (torch.Tensor): training features
+        train_labels (torch.Tensor): training labels
+        val_features (torch.Tensor): validation features
+        val_labels (torch.Tensor): validation labels
 
     Returns:
         LogisticRegression: fitted logistic regression model
     """
-    features = features.cpu().detach().numpy()
-    labels = labels.cpu().detach().numpy()
+    train_features, train_labels = train_features.cpu().numpy(), train_labels.cpu().numpy()
+    val_features, val_labels = val_features.cpu().numpy(), val_labels.cpu().numpy()
 
     reg = 10 ** np.random.uniform(-3, 3, size=10)
     best_val_acc = 0
     best_clf = None
 
     for i in range(10):
-        clf = LogisticRegression(random_state=args.seed, C=reg[i], max_iter=1000)
-        clf.fit(features, labels)
+        clf = LogisticRegression(random_state=args.seed,
+                                 C=reg[i], max_iter=1000,
+                                 class_weight='balanced')
+        clf.fit(train_features, train_labels)
 
-        # Evaluate the model on the validation set
-        val_features = []
-        val_labels = []
-        for batch_idx, (v_input, v_labels) in enumerate(val_loader):
-            v_input, v_labels = v_input.to(args.device, non_blocking=True), v_labels.to(
-                args.device, non_blocking=True)
-            with torch.no_grad():
-                v_features = model.eval_forward(v_input, v_labels)[0]
-            val_features.append(v_features.cpu())
-            val_labels.append(v_labels.cpu())
-
-        val_features = torch.cat(val_features)
-        val_labels = torch.cat(val_labels)
         val_probs = clf.predict_proba(val_features)
-        val_probs = torch.tensor(val_probs, dtype=torch.float32).to(args.device)
-        val_labels = val_labels.to(args.device)
-        val_pred = val_probs.cpu().detach().numpy().argmax(axis=1)
-        val_targets = val_labels.cpu().detach().numpy()
-        val_acc = calculate_balanced_accuracy(val_pred, val_targets)
+        val_pred = np.argmax(val_probs, axis=1)
+        val_acc = calculate_balanced_accuracy(val_pred, val_labels)
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
