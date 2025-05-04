@@ -1,5 +1,3 @@
-import time
-from tqdm import tqdm
 import numpy as np
 import os
 import shutil
@@ -7,6 +5,13 @@ import torch
 import random
 import math
 from torch.optim.lr_scheduler import LambdaLR
+from torchvision.models import resnet18, ResNet18_Weights
+import torch.nn.init as init
+import torch.nn as nn
+from ssl_bench.methods.LabelOnlyBaseline import LabelOnlyBaseline
+from ssl_bench.methods.MixUp import MixUp
+from ssl_bench.methods.BarlowTwins import BarlowTwins
+import torch.optim as optim
 
 
 class EarlyStopping:
@@ -57,17 +62,6 @@ def set_seed(seed):
     torch.manual_seed(seed)
 
 
-# TODO - Check if this is needed after Ray Tune integration
-def sample_loguniform(low=0, high=1, size=1, coefficient=1, base=10):
-    power_value = np.random.uniform(low, high, size)[0]
-    return coefficient*np.power(base, power_value)
-
-
-# TODO - Check if this is needed after Ray Tune integration
-def sample_uniform(low=0.0, high=1.0, size=1, decimal=1):
-    return round(np.random.uniform(low=low, high=high, size=size)[0], 1)
-
-
 def get_cosine_schedule_with_warmup(optimizer,
                                     lr_warmup_epochs,
                                     lr_cycle_epochs,  # total train epochs
@@ -107,91 +101,127 @@ def get_fixed_lr(optimizer, lr_warmup_epochs, lr_cycle_epochs, num_cycles=7./16.
     return LambdaLR(optimizer, _lr_lambda, last_epoch)
 
 
-# TODO - Check if this is needed after refactoring
-def train_one_epoch(args, weights, labeledtrain_loader, model, optimizer, scheduler, epoch):
-    """
-    Generic training loop compatible with MethodWrapper subclasses.
-    This function trains the model for one epoch using labeled data.
+def get_model(args):
+    """Get neural network model
 
     Args:
-        args (Namespace): Parsed arguments with training settings.
-        weights (torch.Tensor): Class weights for the labeled loss.
-        labeledtrain_loader (DataLoader): DataLoader for labeled training data.
-        model (MethodWrapper): Model wrapped with MethodWrapper.
-        optimizer (Optimizer): Optimizer for the model.
-        scheduler (Scheduler): Learning rate scheduler.
-        epoch (int): Current epoch number.
+        args (Namespace): parsed arguments
 
     Returns:
-        list: A list of labeled loss values for this epoch.
+        torch.nn.Module: model specified by args
     """
-    model.train()
-    args.writer.add_scalar('train/lr', scheduler.get_last_lr()[0], epoch)
 
-    # Tracking losses and timing
-    labeled_loss_this_epoch = []
-    end_time = time.time()
-    labeledtrain_iter = iter(labeledtrain_loader)
+    if args.arch == 'resnet18':
+        weights = ResNet18_Weights.DEFAULT if args.use_pretrained else None
+        model = resnet18(weights=weights)
 
-    batch_time = AverageMeter()
-    data_time = AverageMeter()
-    labeled_loss = AverageMeter()
+        # Freeze layers only if using a pretrained model
+        if args.use_pretrained and args.freeze_backbone:
+            print("Freezing layers")
+            for param in model.parameters():
+                param.requires_grad = False
 
-    # Number of steps per epoch
-    n_steps_per_epoch = args.nimg_per_epoch // args.labeledtrain_batchsize
-    p_bar = tqdm(range(n_steps_per_epoch), disable=False)
+        # Replace the last fully connected layer
+        if args.implementation == 'BarlowTwins':
+            model.fc = nn.Identity()
+        else:
+            model.fc = torch.nn.Linear(512, args.num_classes)
+            init.normal_(model.fc.weight, mean=0.0, std=0.0001)
+            init.zeros_(model.fc.bias)
 
-    for batch_idx in range(n_steps_per_epoch):
-        try:
-            l_input, l_labels = next(labeledtrain_iter)
-        except StopIteration:
-            labeledtrain_iter = iter(labeledtrain_loader)
-            l_input, l_labels = next(labeledtrain_iter)
+        # Ensure the new last layer is trainable
+        for param in model.fc.parameters():
+            param.requires_grad = True
 
-        data_time.update(time.time() - end_time)
+    elif args.arch == 'wideresnet':
+        import backbone.wideresnet as models
+        model_depth = 28
+        model_width = 2
 
-        # Move data to the device
-        l_input, l_labels = l_input.to(args.device).float(), l_labels.to(args.device).long()
+        model = models.build_wideresnet(depth=model_depth,
+                                        widen_factor=model_width,
+                                        dropout=0.0,
+                                        num_classes=args.num_classes)
 
-        # Forward pass through the model
-        # Assuming no unlabeled data for this example
-        loss, s_loss, _ = model(l_input, l_labels, None)
+        if args.use_pretrained and args.freeze_backbone:
+            print("Freezing layers")
+            for param in model.parameters():
+                param.requires_grad = False
 
-        # Calculate supervised loss and backpropagate
-        if s_loss != 0:
-            labeled_loss.update(s_loss.item())
-            labeled_loss_this_epoch.append(s_loss.item())
-            s_loss.backward()
+        model.fc = torch.nn.Linear(512, args.num_classes)
+        init.normal_(model.fc.weight, mean=0.0, std=0.0001)
+        init.zeros_(model.fc.bias)
 
-        optimizer.step()
-        model.zero_grad()
+        # Ensure the new last layer is trainable
+        for param in model.fc.parameters():
+            param.requires_grad = True
 
-        batch_time.update(time.time() - end_time)
-        end_time = time.time()
-
-        # Update progress bar
-        p_bar.set_description(
-            f"Train Epoch: {epoch}/{args.train_epoch}. "
-            f"Iter: {batch_idx + 1}/{n_steps_per_epoch}. "
-            f"LR: {scheduler.get_last_lr()[0]:.4f}. "
-            f"Data: {data_time.avg:.3f}s. Batch: {batch_time.avg:.3f}s. "
-            f"Loss_x: {labeled_loss.avg:.4f}."
-        )
-        p_bar.update()
-
-    p_bar.close()
-    scheduler.step()
-
-    return labeled_loss_this_epoch
-
-
-def str2bool(s):
-    if s == 'True':
-        return True
-    elif s == 'False':
-        return False
     else:
-        raise NameError('Bad string')
+        raise NameError('Not implemented yet')
+
+    implementation_map = {
+        'LabelOnlyBaseline': LabelOnlyBaseline,
+        'MixUp': MixUp,
+        'BarlowTwins': BarlowTwins,
+    }
+
+    model_class = implementation_map.get(args.implementation)
+
+    if model_class is None:
+        raise NameError(f"Invalid implementation: {args.implementation}")
+
+    return model_class(model, args)
+
+
+def get_optimizer(args, model: torch.nn.Module):
+    """Get optimizer for learning
+
+    Args:
+        args (Namespace): parsed arguments
+
+    Returns:
+        torch.optim.Optimizer: optimizer specified by args
+    """
+    no_decay = ['bias', 'bn']
+    grouped_parameters = [
+        {'params': [p for n, p in model.named_parameters() if not any(
+            nd in n for nd in no_decay)], 'weight_decay': args.wd},
+        {'params': [p for n, p in model.named_parameters() if any(
+            nd in n for nd in no_decay)], 'weight_decay': args.wd}
+    ]
+
+    if args.optimizer_type == 'SGD':
+        optimizer = optim.SGD(grouped_parameters, lr=args.lr,
+                              momentum=0.9, nesterov=args.nesterov)
+
+    elif args.optimizer_type == 'Adam':
+        optimizer = optim.Adam(grouped_parameters, lr=args.lr)
+
+    else:
+        raise NameError('Not supported optimizer setting')
+
+    return optimizer
+
+
+def get_lr_scheduler(optimizer, args):
+    """Get learning rate scheduler
+
+    Args:
+        optimizer (torch.optim.Optimizer): optimizer
+        args (Namespace): parsed arguments
+
+    Returns:
+        torch.optim.lr_scheduler.LambdaLR: learning rate scheduler
+    """
+    if args.lr_schedule_type == 'CosineLR':
+        scheduler = get_cosine_schedule_with_warmup(
+            optimizer, args.lr_warmup_epochs, args.lr_cycle_epochs)
+    elif args.lr_schedule_type == 'FixedLR':
+        scheduler = get_fixed_lr(optimizer, args.lr_warmup_epochs, args.lr_cycle_epochs)
+    else:
+        raise NameError('Invalid lr_schedule_type')
+
+    return scheduler
 
 
 class AverageMeter(object):

@@ -3,9 +3,8 @@ from torch.nn import functional as func
 import torchvision.transforms.v2 as transforms
 
 
-# TODO should this inherit from LabelOnlyBaseline?
 class MixUp(MethodWrapper):
-    def forward(self, l_data, l_labels):
+    def forward(self, l_data, l_labels, u_data=None):
         self.backbone.train()
 
         mixup_transform = transforms.MixUp(alpha=self.args.alpha, num_classes=self.args.num_classes)

@@ -21,7 +21,7 @@ dataset_configs = {
               'dataset_std': (0.1426, 0.1426, 0.1426),
               'image_size': 112,
               'class_weights': [0.137, 0.398, 0.192, 0.273],
-              'nimg_per_epoch': 355160,
+              'nimg_per_epoch': 17270,
               'num_classes': 4},
 
     'IDRID': {
@@ -40,13 +40,6 @@ dataset_configs = {
                  'num_classes': 2},
 
     'CheXpertEffusion': {'dataset_mean': (0.5064, 0.5064, 0.5064),
-                  'dataset_std': (0.2894, 0.2894, 0.2894),
-                  'image_size': (320, 390),
-                  'class_weights': [0.3027, 0.6973],
-                  'nimg_per_epoch': 3500,
-                  'num_classes': 2},
-    
-    'CheXpert3': {'dataset_mean': (0.5064, 0.5064, 0.5064),
                   'dataset_std': (0.2894, 0.2894, 0.2894),
                   'image_size': (320, 390),
                   'class_weights': [0.3027, 0.6973],
@@ -80,5 +73,10 @@ method_configs = {
         "lr": loguniform(1e-5, 1e-2),
         "wd": loguniform(1e-6, 1e-3),
         "alpha": loguniform(1e-1, 10),
+    }),
+    'BarlowTwins': HyperparamSpace({
+        "lr": loguniform(1e-5, 1e-2),
+        "wd": loguniform(1e-6, 1e-3),
+        "lambd": loguniform(1e-3, 1e-2),
     }),
 }

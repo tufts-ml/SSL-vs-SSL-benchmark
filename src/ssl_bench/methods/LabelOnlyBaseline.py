@@ -3,7 +3,7 @@ from torch.nn import functional as func
 
 
 class LabelOnlyBaseline(MethodWrapper):
-    def forward(self, l_data, l_labels):
+    def forward(self, l_data, l_labels, u_data=None):
         l_data, l_labels = l_data.to(self.args.device), l_labels.to(self.args.device)
 
         logits = self.backbone(l_data)
