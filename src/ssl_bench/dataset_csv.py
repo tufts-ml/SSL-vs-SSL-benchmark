@@ -100,9 +100,6 @@ class CheXpertDataset(VisionDataset):
         self.data = pd.read_csv(csv_file)
         self.root_dir = root_dir
         self.transform = transform
-        # self.label_columns = ['Edema', 'Consolidation',
-        #                       'Atelectasis', 'Pneumothorax',
-        #                       'Pleural Effusion']
         self.label_columns = ['Edema', 'Consolidation',
                               'Atelectasis', 'Pneumothorax',
                               'Pleural Effusion']

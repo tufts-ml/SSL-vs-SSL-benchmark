@@ -27,7 +27,7 @@ export method='LabelOnlyBaseline'
 export resume='last_checkpoint.pth.tar'
 
 # Experiment setting
-export dataset_name='CheXpert2'
+export dataset_name='CheXpertEffusion'
 export data_seed=0
 export training_seed=0
 

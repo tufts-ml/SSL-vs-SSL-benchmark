@@ -68,9 +68,8 @@ def get_dataloaders(args):
         ])
 
     # data transformations for CheXpert
-    elif dataset_name == "CheXpert2":
+    elif dataset_name == "CheXpertEffusion":
         transform_labeledtrain = transforms.Compose([
-            # transforms.ToPILImage(),
             transforms.Grayscale(num_output_channels=3),
             transforms.RandomHorizontalFlip(),
             transforms.Resize(400),
@@ -80,7 +79,6 @@ def get_dataloaders(args):
         ])
 
         transform_eval = transforms.Compose([
-            # transforms.ToPILImage(),
             transforms.Grayscale(num_output_channels=3),
             transforms.RandomHorizontalFlip(),
             transforms.Resize(400),
@@ -377,8 +375,6 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
 
         data_time.update(time.time() - start_time)
 
-        # l_input, l_labels = l_input.to(args.device).float(), l_labels.to(args.device).long()
-
         optimizer.zero_grad()  # Zero gradients before backward pass
 
         logits, loss, supervised_loss, unsupervised_loss = model.forward(
@@ -409,32 +405,7 @@ def train_one_epoch(args, model, optimizer, scheduler, train_loader, epoch):
     all_logits = torch.cat(all_logits)
     all_labels = torch.cat(all_labels)
 
-    # for epoch in range(args.start_epoch, args.train_epoch):
-    #     pr = cProfile.Profile()
-    #     pr.enable()
-    #     train_loss, logits, labels = train_one_epoch(
-    #         args, model, optimizer, scheduler, train_loader, epoch)
-    #     pr.disable()
-    #     pr.dump_stats("latest.stats")
-    #     stats = Stats(pr)
-    #     stats.sort_stats("tottime").print_stats(25)
-    #     pr.print_stats(sort='time')
-
     return labeled_loss.avg, all_logits, all_labels
-
-def plot_confusion_matrix(cm, class_names):
-    fig, ax = plt.subplots(figsize=(6, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
-    buf.seek(0)
-    image = Image.open(buf)
-    image = np.array(image)
-    plt.close(fig)
-    return image
-
 
 def train(args, method_config):
     """ Train model
