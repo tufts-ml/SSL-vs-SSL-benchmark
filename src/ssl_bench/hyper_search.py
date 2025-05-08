@@ -1,3 +1,4 @@
+import cProfile
 import json
 import logging
 import os
@@ -167,7 +168,6 @@ def train_one_epoch(
     all_labels = torch.cat(all_labels) if all_labels else None
 
     return total_loss.avg, all_logits, all_labels
-
 
 def train(args, method_config):
     """ Train model
