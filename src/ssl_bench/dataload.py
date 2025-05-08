@@ -24,7 +24,6 @@ def get_dataloaders(args):
     image_size = dataset_configs[args.dataset_name]['image_size']
 
     l_train_transform, u_train_transform, val_transform, test_transform = get_transformations(args)
-    breakpoint()
 
     # Process unlabeled data
     if args.u_train_dataset_path != '':

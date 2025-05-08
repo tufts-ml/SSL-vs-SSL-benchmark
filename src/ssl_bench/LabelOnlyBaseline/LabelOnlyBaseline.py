@@ -205,7 +205,6 @@ def main(args):
             
     precalculated_class_weights = dataset_configs[args.dataset_name]['class_weights']
     weights = torch.Tensor(precalculated_class_weights)
-#     print('weights used is {}'.format(weights))
     weights = weights.to(args.device)
     
     dataset_mean = dataset_configs[args.dataset_name]['dataset_mean']
@@ -214,8 +213,6 @@ def main(args):
     
     
     transform_labeledtrain = transforms.Compose([
-        # transforms.ToPILImage(),
-        # transforms.Lambda(apply_clahe),
         transforms.Grayscale(num_output_channels=3),
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(size=image_size,
@@ -226,8 +223,6 @@ def main(args):
     ])
 
     transform_eval = transforms.Compose([
-        # transforms.ToPILImage(),
-        # transforms.Lambda(apply_clahe),
         transforms.Grayscale(num_output_channels=3),
         transforms.ToTensor(),
         transforms.Normalize(mean=dataset_mean, std=dataset_std)
@@ -352,14 +347,10 @@ def main(args):
         else:
             raise NameError('Not supported lr scheduler setting')
 
-        # instantiate the ema model object
-#         ema_model = ModelEMA(args, model, args.ema_decay)
-
         args.start_epoch = 0
 
         best_val_raw_acc = 0
         best_test_raw_acc_at_val = 0
-#                 best_train_raw_acc_at_val = 0
 
         this_hypercombo_best_val_raw_acc_list_parallel.append(best_val_raw_acc)
         this_hypercombo_best_test_raw_acc_at_val_list_parallel.append(best_test_raw_acc_at_val)
@@ -376,7 +367,6 @@ def main(args):
 
                 best_val_raw_acc = checkpoint['best_val_raw_acc']
                 best_test_raw_acc_at_val = checkpoint['best_test_raw_acc_at_val']
-    #             best_train_raw_acc_at_val = checkpoint['best_train_raw_acc_at_val']
 
                 current_count = checkpoint['current_count']
                 optimizer.load_state_dict(checkpoint['optimizer'])
@@ -412,7 +402,6 @@ def main(args):
 
                 best_val_raw_acc = val_raw_acc
                 best_test_raw_acc_at_val = test_raw_acc
-#                 best_train_raw_acc_at_val = train_raw_acc
 
             this_hypercombo_best_val_raw_acc_list_parallel.append(best_val_raw_acc)
             this_hypercombo_best_test_raw_acc_at_val_list_parallel.append(best_test_raw_acc_at_val)
