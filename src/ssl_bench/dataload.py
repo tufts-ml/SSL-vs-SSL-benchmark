@@ -38,6 +38,7 @@ def get_dataloaders(args):
         dataset_class = CheXpertDataset
     else:
         dataset_class = LabeledImageCSVDataset
+
     if args.l_train_dataset_path != '':
         train_dataset = dataset_class(csv_file=args.l_train_dataset_path,
                                       root_dir=args.l_root_dataset_path,
