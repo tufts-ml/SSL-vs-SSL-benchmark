@@ -10,7 +10,7 @@ slurm_args = [
     "--output=experiment_output_%j.log",
     "--ntasks=1",
     "--cpus-per-task=8",
-    "--mem-per-cpu=5G",
+    "--mem-per-cpu=2G",
     "--time=24:00:00",
     "--partition=hugheslab",
     "--gres=gpu:rtx_6000:1",
@@ -21,31 +21,30 @@ launch_args = [
     "--implementation BarlowTwins",
 
     # IDRID config
-    "--dataset_name IDRID",
-    "--l_train_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Labels/train.csv",
-    "--val_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Labels/validation.csv",
-    "--test_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Labels/test.csv",
-    "--l_root_dataset_path /cluster/tufts/hugheslab/datasets/IDRID/Images",
-    "--u_train_dataset_path /cluster/tufts/hugheslab/datasets/AIROGS/train_0.csv",
-    "--u_root_dataset_path /cluster/tufts/hugheslab/datasets/AIROGS/Images_0/0",
+    "--dataset_name CheXpertEffusion",
+    "--l_train_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/train_data_effusion.csv",
+    "--val_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/val_data_effusion.csv",
+    "--test_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/test_data_effusion.csv",
+    "--l_root_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/images",
+    "--u_train_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/unlabeled_tr.csv",
+    "--u_root_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/images",
 
     # DataLoader config
-    "--labeledtrain_batchsize 128",
+    "--labeledtrain_batchsize 32",
     "--unlabeledtrain_batchsize 128",
     "--num_workers 8",
 
     # model config
-    "--freeze_backbone",
-    "--use_pretrained",
+    # "--freeze_backbone",
+    # "--use_pretrained",
     "--arch resnet18",
 
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/noaug/fft",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/CheXpert/BarlowTwins/test2",
 
     # optimization config
     "--train_epoch 100",
     "--start_epoch 0",
-    "--patience 50",
     "--total_hour 24",
     "--optimizer_type Adam",
     "--lr_warmup_epochs 0",

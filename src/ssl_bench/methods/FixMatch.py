@@ -9,11 +9,9 @@ class FixMatch(MethodWrapper):
         self.backbone.train()
 
         if u_data is None:
-            print("Warning: u_data is None")
-            u_weak = u_strong = torch.zeros_like(l_data)  
+            raise ValueError("FixMatch requires unlabeled data")
         else:
             u_weak, u_strong = u_data
-            # print(f"u_data (before forward): {u_data}") 
 
         l_data = l_data.to(self.args.device).float()
         l_labels = l_labels.to(self.args.device).long()

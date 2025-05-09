@@ -47,6 +47,7 @@ def get_dataloaders(args):
 
     transform_weak = transforms.Compose([
         transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((390, 400)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
         transforms.ToTensor(),
@@ -55,6 +56,7 @@ def get_dataloaders(args):
 
     transform_strong = transforms.Compose([
         transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((390, 400)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
         RandAugment(),
@@ -83,9 +85,8 @@ def get_dataloaders(args):
         ])
 
     # data transformations for CheXpert
-    elif dataset_name == "CheXpert":
+    elif dataset_name == "CheXpertEffusion":
         transform_labeledtrain = transforms.Compose([
-            transforms.ToPILImage(),
             transforms.Grayscale(num_output_channels=3),
             transforms.RandomHorizontalFlip(),
             transforms.Resize(400),
@@ -95,28 +96,6 @@ def get_dataloaders(args):
         ])
 
         transform_eval = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Grayscale(num_output_channels=3),
-            transforms.RandomHorizontalFlip(),
-            transforms.Resize(400),
-            transforms.CenterCrop(320),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
-
-    elif dataset_name == "CheXpert2":
-        transform_labeledtrain = transforms.Compose([
-            # transforms.ToPILImage(),
-            transforms.Grayscale(num_output_channels=3),
-            transforms.RandomHorizontalFlip(),
-            transforms.Resize(400),
-            transforms.CenterCrop(320),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
-
-        transform_eval = transforms.Compose([
-            # transforms.ToPILImage(),
             transforms.Grayscale(num_output_channels=3),
             transforms.RandomHorizontalFlip(),
             transforms.Resize(400),
@@ -161,17 +140,20 @@ def get_dataloaders(args):
             pretrained_transforms,
         ])
 
+    if args.implementation == "FixMatch":
+        unlabeled_transform = TransformFixMatch(transform_weak, transform_strong)
+    elif args.implementation == "BarlowTwins":
+        unlabeled_transform = TransformTwice(transform_weak)
+    else:
+        raise NotImplementedError(f"Not implemented")
+
     # Process unlabeled data
     if args.u_train_dataset_path != '':
         unlabel_dataset = UnlabeledImageCSVDataset(
             csv_file=args.u_train_dataset_path,
             root_dir=args.u_root_dataset_path,
-            transform=TransformFixMatch(transform_weak, transform_strong)
+            transform=unlabeled_transform
         )
-        # TODO transform based on the method
-        # unlabel_dataset = UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
-        #                                            root_dir=args.u_root_dataset_path,
-        #                                            transform=TransformTwice(transform_labeledtrain))
     else:
         unlabel_dataset = None
 

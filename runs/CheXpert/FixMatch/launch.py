@@ -19,7 +19,7 @@ slurm_args = [
 launch_args = [
     "--implementation FixMatch",
 
-    "--dataset_name CheXpert2",
+    "--dataset_name CheXpertEffusion",
     "--l_train_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/train_data_effusion.csv",
     "--val_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/val_data_effusion.csv",
     "--test_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/test_data_effusion.csv",

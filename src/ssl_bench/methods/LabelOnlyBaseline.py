@@ -9,7 +9,12 @@ class LabelOnlyBaseline(MethodWrapper):
         logits = self.backbone(l_data)
         class_probs = func.softmax(logits, dim=1)
 
-        s_loss = func.cross_entropy(logits, l_labels, weight=self.args.weights, reduction='mean')
+        if l_labels.ndim > 1 and l_labels.shape[1] > 1:
+            s_loss = func.binary_cross_entropy_with_logits(
+                logits, l_labels.float(), weight=self.args.weights, reduction='mean')
+        else:
+            s_loss = func.cross_entropy(
+                logits, l_labels, weight=self.args.weights, reduction='mean')
 
         return class_probs, s_loss, s_loss, 0  # No unsupervised loss
 

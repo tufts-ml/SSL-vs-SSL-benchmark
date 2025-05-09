@@ -104,6 +104,8 @@ class CheXpertDataset(VisionDataset):
                               'Atelectasis', 'Pneumothorax',
                               'Pleural Effusion']
 
+        print("Attributes of CheXpertDataset object:", dir(self))
+
     def __len__(self):
         return self.data.shape[0]
 

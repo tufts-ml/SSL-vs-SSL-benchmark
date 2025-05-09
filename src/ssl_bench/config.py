@@ -32,20 +32,12 @@ dataset_configs = {
         'nimg_per_epoch': 206,
         'num_classes': 5},
 
-    'CheXpert': {'dataset_mean': (0.5064, 0.5064, 0.5064),
-                 'dataset_std': (0.2894, 0.2894, 0.2894),
-                 'image_size': (320, 390),
-                 'class_weights': [0.3027, 0.6973],
-                 'nimg_per_epoch': 3500,
-                 'num_classes': 2},
-
-    'CheXpert2': {'dataset_mean': (0.5064, 0.5064, 0.5064),
+    'CheXpertEffusion': {'dataset_mean': (0.5064, 0.5064, 0.5064),
                   'dataset_std': (0.2894, 0.2894, 0.2894),
-                  'image_size': 320,
+                  'image_size': (320, 390),
                   'class_weights': [0.3027, 0.6973],
                   'nimg_per_epoch': 3500,
                   'num_classes': 2},
-
 }
 
 
