@@ -32,13 +32,6 @@ dataset_configs = {
         'nimg_per_epoch': 206,
         'num_classes': 5},
 
-    'CheXpert': {'dataset_mean': (0.5064, 0.5064, 0.5064),
-                 'dataset_std': (0.2894, 0.2894, 0.2894),
-                 'image_size': (320, 390),
-                 'class_weights': [0.3027, 0.6973],
-                 'nimg_per_epoch': 3500,
-                 'num_classes': 2},
-
     'CheXpertEffusion': {'dataset_mean': (0.5064, 0.5064, 0.5064),
                   'dataset_std': (0.2894, 0.2894, 0.2894),
                   'image_size': (320, 390),
@@ -73,6 +66,11 @@ method_configs = {
         "lr": loguniform(1e-5, 1e-2),
         "wd": loguniform(1e-6, 1e-3),
         "alpha": loguniform(1e-1, 10),
+    }),
+    'FixMatch': HyperparamSpace({
+        "lr": loguniform(1e-5, 1e-2),
+        "wd": loguniform(1e-6, 1e-3),
+        "conf_threshold": loguniform(0.7, 0.95),
     }),
     'BarlowTwins': HyperparamSpace({
         "lr": loguniform(1e-5, 1e-2),

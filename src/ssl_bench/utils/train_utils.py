@@ -10,6 +10,7 @@ import torch.nn.init as init
 import torch.nn as nn
 from ssl_bench.methods.LabelOnlyBaseline import LabelOnlyBaseline
 from ssl_bench.methods.MixUp import MixUp
+from ssl_bench.methods.FixMatch import FixMatch
 from ssl_bench.methods.BarlowTwins import BarlowTwins
 import torch.optim as optim
 
@@ -162,6 +163,7 @@ def get_model(args):
     implementation_map = {
         'LabelOnlyBaseline': LabelOnlyBaseline,
         'MixUp': MixUp,
+        'FixMatch': FixMatch,
         'BarlowTwins': BarlowTwins,
     }
 

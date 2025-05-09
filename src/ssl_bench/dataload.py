@@ -6,6 +6,17 @@ from ssl_bench.config import dataset_configs
 from ssl_bench.utils.apply_clahe import apply_clahe
 from ssl_bench.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 
+from torchvision.transforms import RandAugment
+
+
+class TransformFixMatch:
+    def __init__(self, weak_transform, strong_transform):
+        self.weak = weak_transform
+        self.strong = strong_transform
+
+    def __call__(self, x):
+        return self.weak(x), self.strong(x)
+
 
 class TransformTwice:
     def __init__(self, transform_fn):
@@ -33,6 +44,25 @@ def get_dataloaders(args):
     dataset_mean = dataset_configs[args.dataset_name]['dataset_mean']
     dataset_std = dataset_configs[args.dataset_name]['dataset_std']
     image_size = dataset_configs[args.dataset_name]['image_size']
+
+    transform_weak = transforms.Compose([
+        transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((390, 400)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+    ])
+
+    transform_strong = transforms.Compose([
+        transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((390, 400)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
+        RandAugment(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+    ])
 
     # data transformations for TMED2
     if dataset_name == "TMED2":
@@ -110,11 +140,20 @@ def get_dataloaders(args):
             pretrained_transforms,
         ])
 
+    if args.implementation == "FixMatch":
+        unlabeled_transform = TransformFixMatch(transform_weak, transform_strong)
+    elif args.implementation == "BarlowTwins":
+        unlabeled_transform = TransformTwice(transform_weak)
+    else:
+        raise NotImplementedError(f"Not implemented")
+
     # Process unlabeled data
     if args.u_train_dataset_path != '':
-        unlabel_dataset = UnlabeledImageCSVDataset(csv_file=args.u_train_dataset_path,
-                                                   root_dir=args.u_root_dataset_path,
-                                                   transform=TransformTwice(transform_labeledtrain))
+        unlabel_dataset = UnlabeledImageCSVDataset(
+            csv_file=args.u_train_dataset_path,
+            root_dir=args.u_root_dataset_path,
+            transform=unlabeled_transform
+        )
     else:
         unlabel_dataset = None
 

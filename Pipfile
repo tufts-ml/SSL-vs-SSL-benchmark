@@ -28,7 +28,6 @@ ray = "*"
 flake8 = "*"
 ssl-bench = {file = ".", editable = true}
 scikit-image = "*"
-lightly = "*"
 
 [torch_cpu]
 torch = {index="pytorch_cpu"}
