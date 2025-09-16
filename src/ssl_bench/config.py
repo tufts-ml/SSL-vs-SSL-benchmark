@@ -60,6 +60,15 @@ class TransformTwice:
 
         return out1, out2
 
+class TransformFixMatch:
+    def __init__(self, weak_transform, strong_transform):
+        self.weak = weak_transform
+        self.strong = strong_transform
+
+    def __call__(self, x):
+        return self.weak(x), self.strong(x)
+
+
 def get_transformations(args):
     dataset_name = args.dataset_name
     method = args.implementation

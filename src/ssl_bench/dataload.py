@@ -9,26 +9,6 @@ from ssl_bench.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDatas
 from torchvision.transforms import RandAugment
 
 
-class TransformFixMatch:
-    def __init__(self, weak_transform, strong_transform):
-        self.weak = weak_transform
-        self.strong = strong_transform
-
-    def __call__(self, x):
-        return self.weak(x), self.strong(x)
-
-
-class TransformTwice:
-    def __init__(self, transform_fn):
-        self.transform_fn = transform_fn
-
-    def __call__(self, x):
-        out1 = self.transform_fn(x)
-        out2 = self.transform_fn(x)
-
-        return out1, out2
-
-
 def get_dataloaders(args):
     """Get DataLoaders
 
