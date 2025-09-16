@@ -6,6 +6,28 @@ from ssl_bench.config import dataset_configs, get_transformations
 from ssl_bench.utils.apply_clahe import apply_clahe
 from ssl_bench.dataset_csv import LabeledImageCSVDataset, UnlabeledImageCSVDataset, CheXpertDataset
 
+from torchvision.transforms import RandAugment
+
+
+class TransformFixMatch:
+    def __init__(self, weak_transform, strong_transform):
+        self.weak = weak_transform
+        self.strong = strong_transform
+
+    def __call__(self, x):
+        return self.weak(x), self.strong(x)
+
+
+class TransformTwice:
+    def __init__(self, transform_fn):
+        self.transform_fn = transform_fn
+
+    def __call__(self, x):
+        out1 = self.transform_fn(x)
+        out2 = self.transform_fn(x)
+
+        return out1, out2
+
 
 def get_dataloaders(args):
     """Get DataLoaders
@@ -23,7 +45,33 @@ def get_dataloaders(args):
     dataset_std = dataset_configs[args.dataset_name]['dataset_std']
     image_size = dataset_configs[args.dataset_name]['image_size']
 
+    transform_weak = transforms.Compose([
+        transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((390, 400)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+    ])
+
+    transform_strong = transforms.Compose([
+        transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((390, 400)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
+        RandAugment(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+    ])
+
     l_train_transform, u_train_transform, val_transform, test_transform = get_transformations(args)
+
+    if args.implementation == "FixMatch":
+        unlabeled_transform = TransformFixMatch(transform_weak, transform_strong)
+    elif args.implementation == "BarlowTwins":
+        unlabeled_transform = TransformTwice(transform_weak)
+    else:
+        raise NotImplementedError(f"Not implemented")
 
     # Process unlabeled data
     if args.u_train_dataset_path != '':

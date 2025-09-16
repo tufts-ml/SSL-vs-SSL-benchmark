@@ -55,6 +55,11 @@ def parse_args():
     # unlabeled warmup following MixMatch and FixMatch repo
     parser.add_argument('--unlabeledloss_warmup_pos', default=0.4, type=float,
                         help='position at which unlabeled loss warmup ends')
+
+    parser.add_argument('--conf_threshold', type=float, default=0.95, help='Confidence threshold for FixMatch')
+    parser.add_argument('--unsup_weight', type=float, default=1.0, help='Weight for the unsupervised loss')
+
+
     # default hypers not to search for now
     parser.add_argument('--nesterov', action='store_true', default=True,
                         help='use nesterov momentum')

@@ -59,8 +59,8 @@ class LabeledImageCSVDataset(VisionDataset):
 
         # Working with unlabeled data
         else:
-            if self.transform is not None:
-                image = self.transform(image)  # Apply image transformations
+            if self.transforms is not None:
+                return self.transform(image)
             return image
 
 

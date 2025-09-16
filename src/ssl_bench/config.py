@@ -246,6 +246,11 @@ method_configs = {
         "wd": loguniform(1e-6, 1e-3),
         "alpha": loguniform(1e-1, 10),
     }),
+    'FixMatch': HyperparamSpace({
+        "lr": loguniform(1e-5, 1e-2),
+        "wd": loguniform(1e-6, 1e-3),
+        "conf_threshold": loguniform(0.7, 0.95),
+    }),
     'BarlowTwins': HyperparamSpace({
         "lr": loguniform(1e-5, 1e-2),
         "wd": loguniform(1e-6, 1e-3),
