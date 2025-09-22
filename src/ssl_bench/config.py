@@ -188,7 +188,24 @@ def get_transformations(args):
             ])
         }
     }
+    transform_weak = transforms.Compose([
+        transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((390, 400)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+    ])
 
+    transform_strong = transforms.Compose([
+        transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((390, 400)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
+        RandAugment(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+    ])
 
     method_transformations = {
         "LabelOnlyBaseline": {
@@ -206,6 +223,12 @@ def get_transformations(args):
         "BarlowTwins": {
             "l_train": None,
             "u_train": TransformTwice(dataset_base_transformations[dataset_name]["l_train"]),
+            "val": None,
+            "test": None
+        },
+        "FixMatch":{
+            "l_train": None,
+            "u_train": TransformFixMatch(transform_weak, transform_strong),
             "val": None,
             "test": None
         }
