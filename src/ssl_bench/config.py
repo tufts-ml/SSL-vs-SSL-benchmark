@@ -1,4 +1,4 @@
-from scipy.stats import loguniform
+from scipy.stats import loguniform, uniform
 
 dataset_configs = {
     'TissueMNIST': {'dataset_mean': (0.0988, 0.0988, 0.0988),
@@ -76,5 +76,10 @@ method_configs = {
         "lr": loguniform(1e-5, 1e-2),
         "wd": loguniform(1e-6, 1e-3),
         "lambd": loguniform(1e-3, 1e-2),
+    }),
+    'SimCLR': HyperparamSpace({
+        "lr":  loguniform(10**-4.5, 10**-1.5),
+        "wd": loguniform(10**-6.5, 10**-3.5),
+        "temperature": uniform(0.07, 0.12),
     }),
 }

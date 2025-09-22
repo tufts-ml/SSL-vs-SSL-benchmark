@@ -40,12 +40,13 @@ launch_args = [
     "--arch resnet18",
 
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/noaug/fft",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/more_aug/fft",
+    "--seed 13",
 
     # optimization config
     "--train_epoch 100",
-    "--start_epoch 0",
     "--patience 50",
+    "--start_epoch 0",
     "--total_hour 24",
     "--optimizer_type Adam",
     "--lr_warmup_epochs 0",
