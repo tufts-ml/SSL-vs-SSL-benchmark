@@ -1,12 +1,14 @@
 from ssl_bench.methods.MethodWrapper import MethodWrapper
 from lightly.models.modules import BarlowTwinsProjectionHead
 from lightly.loss import BarlowTwinsLoss
+import torch.nn as nn
 
 
 class BarlowTwins(MethodWrapper):
     def __init__(self, backbone, args):
         super(BarlowTwins, self).__init__(backbone, args)  # Pass required arguments
         self.backbone = backbone
+        backbone.fc = nn.Identity()
         self.projection_head = BarlowTwinsProjectionHead(
             512, 1024, 1024)
         self.barlow_twins_loss = BarlowTwinsLoss(

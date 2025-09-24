@@ -198,7 +198,7 @@ def train(args, method_config):
         train_loss, probs, labels = train_one_epoch(
             args, model, optimizer, scheduler, epoch, label_loader, unlabel_loader)
 
-        if args.implementation == 'BarlowTwins':
+        if args.implementation in ['BarlowTwins', 'SimCLR']:
             model.eval()
 
             all_features = []
