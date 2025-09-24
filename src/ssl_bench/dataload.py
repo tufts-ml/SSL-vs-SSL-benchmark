@@ -68,18 +68,18 @@ def get_dataloaders(args):
     if dataset_name == "TMED2":
         transform_labeledtrain = transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
-            transforms.Lambda(apply_clahe),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(size=image_size,
-                                  padding=int(image_size*0.125),
-                                  padding_mode='reflect'),
+            # transforms.Lambda(apply_clahe),
+            # transforms.RandomHorizontalFlip(),
+            # transforms.RandomCrop(size=image_size,
+            #                       padding=int(image_size*0.125),
+            #                       padding_mode='reflect'),
             transforms.ToTensor(),
             transforms.Normalize(mean=dataset_mean, std=dataset_std)
         ])
 
         transform_eval = transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
-            transforms.Lambda(apply_clahe),
+            # transforms.Lambda(apply_clahe),
             transforms.ToTensor(),
             transforms.Normalize(mean=dataset_mean, std=dataset_std)
         ])
@@ -161,8 +161,8 @@ def get_dataloaders(args):
         unlabeled_transform = TransformFixMatch(transform_weak, transform_strong)
     elif args.implementation == "BarlowTwins":
         unlabeled_transform = TransformTwice(transform_weak)
-    else:
-        raise NotImplementedError(f"Not implemented")
+    # else:
+    #     raise NotImplementedError(f"Not implemented")
 
     # Process unlabeled data
     if args.u_train_dataset_path != '':

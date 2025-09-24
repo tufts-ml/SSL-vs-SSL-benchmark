@@ -11,7 +11,7 @@ slurm_args = [
     "--ntasks=1",
     "--cpus-per-task=8",
     "--mem-per-cpu=2G",
-    "--time=2:00:00",
+    "--time=24:00:00",
     "--partition=hugheslab",
     "--gres=gpu:rtx_6000:1",
 ]
@@ -25,19 +25,22 @@ launch_args = [
     "--val_dataset_path /cluster/tufts/hugheslab/datasets/tmed/version2/labels_val.csv",
     "--test_dataset_path /cluster/tufts/hugheslab/datasets/tmed/version2/labels_test.csv",
     "--l_root_dataset_path /cluster/tufts/hugheslab/datasets/tmed/version2",
+    # "--u_train_dataset_path /cluster/tufts/hugheslab/datasets/tmed/version2/unlabeled.csv",
+    # "--u_root_dataset_path /cluster/tufts/hugheslab/datasets/tmed/version2",
     # DataLoader config
     "--labeledtrain_batchsize 32",
-    "--num_workers 1",
+    # "--unlabeledtrain_batchsize 128",
+    "--num_workers 8",
     # model config
-    "--freeze_backbone",
-    "--use_pretrained",
-    "--arch wideresnet",
+    # "--freeze_backbone",
+    # "--use_pretrained",
+    "--arch resnet18",
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/launcher_testing",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/TMED2/Debugging/LabelOnlyBaseline/NoRandomTransforms",
     # optimization config
     "--train_epoch 100",
     "--start_epoch 0",
-    "--total_hour 1",
+    "--total_hour 24",
     "--optimizer_type Adam",
     "--lr_warmup_epochs 0",
     "--lr_schedule_type CosineLR",
