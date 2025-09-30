@@ -161,8 +161,8 @@ def get_dataloaders(args):
         unlabeled_transform = TransformFixMatch(transform_weak, transform_strong)
     elif args.implementation == "BarlowTwins":
         unlabeled_transform = TransformTwice(transform_weak)
-    else:
-        raise NotImplementedError(f"Not implemented")
+    # else:
+    #     raise NotImplementedError(f"Not implemented")
 
     # Process unlabeled data
     if args.u_train_dataset_path != '':
