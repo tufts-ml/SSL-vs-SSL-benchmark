@@ -5,7 +5,7 @@
 | Family | Method | TMED2 | Chexpert | IDRID |
 | ------ | ------ | ----- | -------- | ----- |
 | Lab. only | CE | 32.81 (4/10) |78.57 (9/30)| 51.7651 (4/16) |
-| Lab. only | MixUp | 31.8541 (4/10) |76.05 (4/10)| 47.7351 (4/11) |
+| Lab. only | MixUp | 31.8541 (4/10) |78.00 (9/30)| 47.7351 (4/11) |
 | self      | Barlow Twins | | | 36.1382 (4/18) |
 | self      | MoCo v3 | | | |
 | self      | SimCLR | | | 26.5778 (5/2) |
@@ -17,7 +17,7 @@
 | Family | Method | TMED2 | Chexpert | IDRID |
 | ------ | --- | --- | --- | --- |
 | Lab. only | CE | 30.6864 (4/10) |69.30 (9/30)| 45.7113 (4/16) |
-| Lab. only | MixUp | 30.3466 (4/10) |73.13 (4/10)| 48.2996 (4/16) |
+| Lab. only | MixUp | 30.3466 (4/10) |68.85 (9/30)| 48.2996 (4/16) |
 | self      | Barlow Twins | | | 34.0291 (4/18)|
 
 Table of (TODO balanced?) accuracy results and date when the experiment was completed in parentheses.
