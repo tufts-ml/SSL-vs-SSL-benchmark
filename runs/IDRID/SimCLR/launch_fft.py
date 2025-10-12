@@ -10,7 +10,7 @@ slurm_args = [
     "--output=experiment_output_%j.log",
     "--ntasks=1",
     "--cpus-per-task=8",
-    "--mem-per-cpu=5G",
+    "--mem-per-cpu=2G",
     "--time=24:00:00",
     "--partition=hugheslab",
     "--gres=gpu:rtx_6000:1",
@@ -18,7 +18,7 @@ slurm_args = [
 
 launch_args = [
     # method to use
-    "--implementation BarlowTwins",
+    "--implementation SimCLR",
 
     # IDRID config
     "--dataset_name IDRID",
@@ -35,12 +35,12 @@ launch_args = [
     "--num_workers 8",
 
     # model config
-    "--freeze_backbone",
+    # "--freeze_backbone",
     "--use_pretrained",
     "--arch resnet18",
 
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/BarlowTwins/more_aug/lp",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/IDRID/SimCLR/test",
     "--seed 13",
 
     # optimization config

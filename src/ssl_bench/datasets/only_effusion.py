@@ -1,7 +1,7 @@
 import pandas as pd
 
-input_file = "/cluster/tufts/hugheslab/datasets/CheXpert/train.csv"
-output_file = "/cluster/tufts/hugheslab/datasets/CheXpert/train_data_effusion.csv"
+input_file = "/cluster/tufts/hugheslab/datasets/chexpert_sample_data/test_data.csv"
+output_file = "/cluster/tufts/hugheslab/datasets/chexpert_sample_data/test_data_effusion.csv"
 
 df = pd.read_csv(input_file)
 

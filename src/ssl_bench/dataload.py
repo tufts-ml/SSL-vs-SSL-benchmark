@@ -88,36 +88,18 @@ def get_dataloaders(args):
     elif dataset_name == "CheXpertEffusion":
         transform_labeledtrain = transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
-            transforms.Resize((390, 400)),
             transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop((320, 390)),
+            transforms.Resize(400),
+            transforms.CenterCrop(320),
             transforms.ToTensor(),
             transforms.Normalize(mean=dataset_mean, std=dataset_std)
         ])
 
         transform_eval = transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
-            transforms.Resize((390, 400)),
-            transforms.CenterCrop((320, 390)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
-
-    # data transformations for FullCheXpert
-    elif dataset_name == "FullCheXpertEffusion":
-        transform_labeledtrain = transforms.Compose([
-            transforms.Grayscale(num_output_channels=3),
-            transforms.Resize((390, 400)),
             transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop((320, 390)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=dataset_mean, std=dataset_std)
-        ])
-
-        transform_eval = transforms.Compose([
-            transforms.Grayscale(num_output_channels=3),
-            transforms.Resize((390, 400)),
-            transforms.CenterCrop((320, 390)),
+            transforms.Resize(400),
+            transforms.CenterCrop(320),
             transforms.ToTensor(),
             transforms.Normalize(mean=dataset_mean, std=dataset_std)
         ])
@@ -146,15 +128,32 @@ def get_dataloaders(args):
         raise NotImplementedError(f"Implement dataloading logic for the \
             following dataset: {dataset_name}")
 
+    imagenet_mean = (0.485, 0.456, 0.406)
+    imagenet_std = (0.229, 0.224, 0.225)
+
     if args.use_pretrained:
         print("Using pretrained model and transforms")
         pretrained_transforms = ResNet18_Weights.IMAGENET1K_V1.transforms()
         transform_labeledtrain = transforms.Compose([
+            transforms.Resize(size=image_size),
+            transforms.RandomCrop(size=image_size,
+                                  padding=int(image_size*0.125),
+                                  padding_mode='reflect'),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomApply([
+                transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
+            ], p=0.8),
+            transforms.RandomGrayscale(p=0.2),
             transforms.Grayscale(num_output_channels=3),
-            pretrained_transforms,
+            transforms.ToTensor(),
+            transforms.Normalize(mean=imagenet_mean, std=imagenet_std),
         ])
         transform_eval = transforms.Compose([
+            transforms.Resize(size=image_size),
+            transforms.CenterCrop(image_size),
             transforms.Grayscale(num_output_channels=3),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=imagenet_mean, std=imagenet_std),
             pretrained_transforms,
         ])
 

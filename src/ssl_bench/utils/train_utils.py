@@ -13,6 +13,7 @@ from ssl_bench.methods.MixUp import MixUp
 from ssl_bench.methods.FixMatch import FixMatch
 from ssl_bench.methods.MixMatch import MixMatch
 from ssl_bench.methods.BarlowTwins import BarlowTwins
+from ssl_bench.methods.SimCLR import SimCLR
 import torch.optim as optim
 
 
@@ -124,12 +125,9 @@ def get_model(args):
                 param.requires_grad = False
 
         # Replace the last fully connected layer
-        if args.implementation == 'BarlowTwins':
-            model.fc = nn.Identity()
-        else:
-            model.fc = torch.nn.Linear(512, args.num_classes)
-            init.normal_(model.fc.weight, mean=0.0, std=0.0001)
-            init.zeros_(model.fc.bias)
+        model.fc = torch.nn.Linear(512, args.num_classes)
+        init.normal_(model.fc.weight, mean=0.0, std=0.0001)
+        init.zeros_(model.fc.bias)
 
         # Ensure the new last layer is trainable
         for param in model.fc.parameters():
@@ -167,6 +165,7 @@ def get_model(args):
         'FixMatch': FixMatch,
         'MixMatch': MixMatch,
         'BarlowTwins': BarlowTwins,
+        'SimCLR': SimCLR,
     }
 
     model_class = implementation_map.get(args.implementation)

@@ -2,11 +2,18 @@
 #SBATCH --job-name=hyper_search
 #SBATCH --output=experiment_output_%j.log
 #SBATCH --ntasks=1
+<<<<<<< HEAD
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=16G
 #SBATCH --time=50:00:00
 #SBATCH --partition=hugheslab
 #SBATCH --gres=gpu:rtx_6000:1
+=======
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=16G
+#SBATCH --time=10:00:00  # Adjust as needed
+#SBATCH --partition=preempt
+>>>>>>> origin/v2
 
 # Load the necessary modules (if required)
 # module load python/3.8.5  # Example
@@ -15,7 +22,10 @@
 source /cluster/home/abaran03/.local/share/virtualenvs/SSL-vs-SSL-benchmark-2JwcXsi7/bin/activate
 
 # Export environment variables
+<<<<<<< HEAD
 export ROOT_PATH='/cluster/tufts/hugheslab/abaran03/SSL-vs-SSL-benchmark'
+=======
+>>>>>>> origin/v2
 export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH/src"
 
 
@@ -26,7 +36,11 @@ python3 -m ssl_bench.hyper_search \
     --l_train_dataset_path $l_train_dataset_path \
     --val_dataset_path $val_dataset_path \
     --test_dataset_path $test_dataset_path \
+<<<<<<< HEAD
     --l_root_dataset_path $l_root_dataset_path \
+=======
+    --root_dataset_path $root_dataset_path \
+>>>>>>> origin/v2
     --labeledtrain_batchsize $labeledtrain_batchsize \
     --num_workers $num_workers \
     --arch $arch \
@@ -37,6 +51,10 @@ python3 -m ssl_bench.hyper_search \
     --lr_warmup_epochs $lr_warmup_epochs \
     --optimizer_type $optimizer_type \
     --lr_schedule_type $lr_schedule_type \
+<<<<<<< HEAD
     --lr_cycle_epochs $lr_cycle_epochs \
     --use_pretrained \
     --freeze_backbone
+=======
+    --lr_cycle_epochs $lr_cycle_epochs 
+>>>>>>> origin/v2
