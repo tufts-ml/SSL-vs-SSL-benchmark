@@ -20,7 +20,7 @@
 | Lab. only | MixUp | 30.3466 (4/10) |68.85 (10/1)| 48.2996 (4/16) |
 | self      | Barlow Twins | |67.51 (10/1) | 34.0291 (4/18)|
 | self      | MoCo v3 | | | |
-| self      | SimCLR | | | |
+| self      | SimCLR | |53.97 (10/16)| |
 | semi      | MixMatch | |61.1 (10/15)| |
 | semi      | FixMatch | | | |
 | semi      | PseudoLab | | | |
