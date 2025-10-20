@@ -9,7 +9,7 @@
 | self      | Barlow Twins | |69.35 (10/1) | 36.1382 (4/18) |
 | self      | MoCo v3 | | | |
 | self      | SimCLR | |64.65 (10/15)| 26.5778 (5/2) |
-| semi      | MixMatch | |69.74 (10/15)| |
+| semi      | MixMatch | |69.74 (10/15)|29.83 (10/20)|
 | semi      | FixMatch | | | |
 | semi      | PseudoLab | | | |
 
