@@ -23,6 +23,6 @@
 | self      | SimCLR | |53.97 (10/16)| |
 | semi      | MixMatch | |61.1 (10/15)| |
 | semi      | FixMatch | | | |
-| semi      | PseudoLab | | | |
+| semi      | PseudoLab | |56.21 (10/29)| |
 
 Table of (TODO balanced?) accuracy results and date when the experiment was completed in parentheses.
