@@ -1,4 +1,5 @@
 import torch
+import torchvision
 from torchvision import transforms
 from torchvision.models import ResNet18_Weights
 
@@ -123,7 +124,11 @@ def get_dataloaders(args):
             transforms.ToTensor(),
             transforms.Normalize(mean=dataset_mean, std=dataset_std)
         ])
-
+    elif dataset_name == "CIFAR10" or dataset_name == "CIFAR100":
+        transform_labeledtrain = transforms.Compose(
+            [transforms.ToTensor(),
+             transforms.Normalize(mean=dataset_mean, std=dataset_std)])
+        transform_eval = transform_labeledtrain
     else:
         raise NotImplementedError(f"Implement dataloading logic for the \
             following dataset: {dataset_name}")
@@ -162,7 +167,7 @@ def get_dataloaders(args):
     elif args.implementation == "BarlowTwins":
         unlabeled_transform = TransformTwice(transform_weak)
     else:
-        raise NotImplementedError(f"Not implemented")
+        raise NotImplementedError(f"Not implemented: {args.implementation}")
 
     # Process unlabeled data
     if args.u_train_dataset_path != '':
@@ -177,36 +182,58 @@ def get_dataloaders(args):
     # Process labeled data
     if dataset_name == "CheXpert":
         dataset_class = CheXpertDataset
+    elif dataset_name == "CIFAR10":
+        train_dataset = torchvision.datasets.CIFAR10(
+            root=args.l_train_dataset_path, train=True, download=True,
+            transform=transform_labeledtrain)
+        test_dataset = torchvision.datasets.CIFAR10(
+            root=args.test_dataset_path, train=False, download=True, transform=transform_eval)
+        valid_dataset = None
+        dataset_class = None
+    elif dataset_name == "CIFAR100":
+        train_dataset = torchvision.datasets.CIFAR100(
+            root=args.l_train_dataset_path, train=True, download=True,
+            transform=transform_labeledtrain)
+        test_dataset = torchvision.datasets.CIFAR100(
+            root=args.test_dataset_path, train=False, download=True, transform=transform_eval)
+        valid_dataset = None
+        dataset_class = None
     else:
         dataset_class = LabeledImageCSVDataset
-    if args.l_train_dataset_path != '':
-        train_dataset = dataset_class(csv_file=args.l_train_dataset_path,
-                                      root_dir=args.l_root_dataset_path,
-                                      transform=transform_labeledtrain)
-    else:
-        train_dataset = None
 
-    if args.val_dataset_path != '':
-        valid_dataset = dataset_class(csv_file=args.val_dataset_path,
-                                      root_dir=args.l_root_dataset_path,
-                                      transform=transform_eval)
-    else:
-        valid_dataset = None
+    if dataset_class is not None:
+        if args.l_train_dataset_path != '':
+            train_dataset = dataset_class(csv_file=args.l_train_dataset_path,
+                                          root_dir=args.l_root_dataset_path,
+                                          transform=transform_labeledtrain)
+        else:
+            train_dataset = None
 
-    if args.test_dataset_path != '':
-        test_dataset = dataset_class(csv_file=args.test_dataset_path,
-                                     root_dir=args.l_root_dataset_path,
-                                     transform=transform_eval)
-    else:
-        test_dataset = None
+        if args.val_dataset_path != '':
+            valid_dataset = dataset_class(csv_file=args.val_dataset_path,
+                                          root_dir=args.l_root_dataset_path,
+                                          transform=transform_eval)
+        else:
+            valid_dataset = None
+
+        if args.test_dataset_path != '':
+            test_dataset = dataset_class(csv_file=args.test_dataset_path,
+                                         root_dir=args.l_root_dataset_path,
+                                         transform=transform_eval)
+        else:
+            test_dataset = None
 
     # Create dataloaders
-    train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=args.labeledtrain_batchsize,
-                                               shuffle=True,
-                                               num_workers=args.num_workers,
-                                               pin_memory=True,
-                                               drop_last=True)
+    if train_dataset is not None:
+        train_loader = torch.utils.data.DataLoader(train_dataset,
+                                                   batch_size=args.labeledtrain_batchsize,
+                                                   shuffle=True,
+                                                   num_workers=args.num_workers,
+                                                   pin_memory=True,
+                                                   drop_last=True)
+    else:
+        train_loader = None
+
     if unlabel_dataset is not None:
         print("Length of unlabeled dataset: ", len(unlabel_dataset))
         unlabel_loader = torch.utils.data.DataLoader(unlabel_dataset,
