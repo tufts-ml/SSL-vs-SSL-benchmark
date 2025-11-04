@@ -10,6 +10,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import numpy as np
+from torchvision.utils import save_image
 
 
 from ssl_bench.config import dataset_configs, method_configs, HyperparamSpace
@@ -118,6 +119,7 @@ def train_one_epoch(
 
     start_time = time.time()
 
+    batch_idx = 0
     for _ in range(n_steps_per_epoch):
         data_time.update(time.time() - start_time)
 
@@ -126,6 +128,7 @@ def train_one_epoch(
         if label_loader is not None:
             try:
                 l_input, l_labels = next(labeledtrain_iter)
+                batch_idx += 1
             except StopIteration:
                 labeledtrain_iter = iter(label_loader)
                 l_input, l_labels = next(labeledtrain_iter)
@@ -141,8 +144,12 @@ def train_one_epoch(
         else:
             u_input = None
 
-        logits, loss, supervised_loss, unsupervised_loss = model.forward(
-            l_input, l_labels, u_input)
+        if args.implementation in ["FixMatch"]:
+            logits, supervised_loss, combined_loss, unsupervised_loss = model.forward(
+                l_input, l_labels, u_input)
+        else:
+            logits, loss, supervised_loss, unsupervised_loss = model.forward(
+                l_input, l_labels, u_input)
 
         if logits is not None:
             all_logits.append(logits.detach().cpu())
@@ -151,9 +158,13 @@ def train_one_epoch(
 
         # Weighted update for correct loss averaging
         batch_size = l_labels.size(0) if l_labels is not None else u_input.size(0)
-        total_loss.update(loss, batch_size)
+        if args.implementation in ['FixMatch']:
+            total_loss.update(combined_loss)
+            combined_loss.backward()
+        else:
+            total_loss.update(loss, batch_size)
+            loss.backward()
 
-        loss.backward()
         optimizer.step()
 
         batch_time.update(time.time() - start_time)

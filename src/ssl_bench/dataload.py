@@ -45,6 +45,26 @@ def get_dataloaders(args):
     dataset_std = dataset_configs[args.dataset_name]['dataset_std']
     image_size = dataset_configs[args.dataset_name]['image_size']
 
+    fixmatch_weak = transforms.Compose([
+        transforms.Grayscale(num_output_channels=3),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(size=image_size,
+                        padding=int(image_size*0.125),
+                        padding_mode='reflect'),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+    ])
+
+    fixmatch_strong = transforms.Compose([
+        transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((390, 400)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
+        RandAugment(num_ops=1),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=dataset_mean, std=dataset_std)
+    ])
+
     transform_weak = transforms.Compose([
         transforms.Grayscale(num_output_channels=3),
         transforms.Resize((390, 400)),
@@ -158,9 +178,19 @@ def get_dataloaders(args):
         ])
 
     if args.implementation == "FixMatch":
-        unlabeled_transform = TransformFixMatch(transform_weak, transform_strong)
-    elif args.implementation == "BarlowTwins":
+        unlabeled_transform = TransformFixMatch(fixmatch_weak, fixmatch_strong)
+    elif args.implementation in ["MixMatch"]:
+        if not hasattr(args, "temperature"):
+            args.temperature = 0.5
+        if not hasattr(args, "unlabeledloss_warmup_schedule_type"):
+            args.unlabeledloss_warmup_schedule_type = "linear"
         unlabeled_transform = TransformTwice(transform_weak)
+    elif args.implementation in ["BarlowTwins", "SimCLR"]:
+        unlabeled_transform = TransformTwice(transform_weak)
+    elif args.implementation == "LabelOnlyBaseline":
+        unlabeled_transform = None
+    elif args.implementation == "MixUp":
+        unlabeled_transform = None
     else:
         raise NotImplementedError(f"Not implemented")
 
