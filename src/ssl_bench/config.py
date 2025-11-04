@@ -59,8 +59,8 @@ class HyperparamSpace():
 
 method_configs = {
     'LabelOnlyBaseline': HyperparamSpace({
-        "lr": loguniform(1e-5, 1e-2),
-        "wd": loguniform(1e-6, 1e-3),
+        "lr": loguniform(3e-5, 3e-2),
+        "wd": loguniform(4e-6, 4e-3),
     }),
     'MixUp': HyperparamSpace({
         "lr": loguniform(1e-5, 1e-2),
@@ -68,8 +68,8 @@ method_configs = {
         "alpha": loguniform(1e-1, 10),
     }),
     'FixMatch': HyperparamSpace({
-        "lr": loguniform(1e-5, 1e-2),
-        "wd": loguniform(1e-6, 1e-3),
+        "lr": loguniform(3e-5, 3e-2),
+        "wd": loguniform(4e-6, 4e-3),
         "conf_threshold": loguniform(0.7, 0.95),
     }),
     'BarlowTwins': HyperparamSpace({
