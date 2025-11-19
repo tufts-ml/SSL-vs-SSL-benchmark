@@ -57,9 +57,10 @@ def get_dataloaders(args):
 
     fixmatch_strong = transforms.Compose([
         transforms.Grayscale(num_output_channels=3),
-        transforms.Resize((390, 400)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
+        # transforms.RandomHorizontalFlip(),
+        # transforms.RandomCrop(size=image_size,
+        #                 padding=int(image_size*0.125),
+        #                 padding_mode='reflect'),
         RandAugment(num_ops=1),
         transforms.ToTensor(),
         transforms.Normalize(mean=dataset_mean, std=dataset_std)
@@ -187,6 +188,7 @@ def get_dataloaders(args):
         unlabeled_transform = TransformTwice(transform_weak)
     elif args.implementation in ["BarlowTwins", "SimCLR"]:
         unlabeled_transform = TransformTwice(transform_weak)
+        breakpoint()
     elif args.implementation == "LabelOnlyBaseline":
         unlabeled_transform = None
     elif args.implementation == "MixUp":
