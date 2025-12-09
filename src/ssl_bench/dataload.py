@@ -124,7 +124,7 @@ def get_dataloaders(args):
             transforms.ToTensor(),
             transforms.Normalize(mean=dataset_mean, std=dataset_std)
         ])
-    elif dataset_name == "CIFAR10" or dataset_name == "CIFAR100":
+    elif ("CIFAR" in dataset_name):
         transform_labeledtrain = transforms.Compose(
             [transforms.ToTensor(),
              transforms.Normalize(mean=dataset_mean, std=dataset_std)])
@@ -166,8 +166,8 @@ def get_dataloaders(args):
         unlabeled_transform = TransformFixMatch(transform_weak, transform_strong)
     elif args.implementation == "BarlowTwins":
         unlabeled_transform = TransformTwice(transform_weak)
-    else:
-        raise NotImplementedError(f"Not implemented: {args.implementation}")
+    # else:
+    #     raise NotImplementedError(f"Not implemented: {args.implementation}")
 
     # Process unlabeled data
     if args.u_train_dataset_path != '':
@@ -188,7 +188,10 @@ def get_dataloaders(args):
             transform=transform_labeledtrain)
         test_dataset = torchvision.datasets.CIFAR10(
             root=args.test_dataset_path, train=False, download=True, transform=transform_eval)
-        valid_dataset = None
+
+        train_size = int(len(train_dataset) * 0.8) # 80% training data
+        valid_size = len(train_dataset) - train_size # 20% validation data
+        train_dataset, valid_dataset = torch.utils.data.random_split(train_dataset, [train_size, valid_size])
         dataset_class = None
     elif dataset_name == "CIFAR100":
         train_dataset = torchvision.datasets.CIFAR100(
@@ -245,11 +248,12 @@ def get_dataloaders(args):
     else:
         unlabel_loader = None
 
+
     if valid_dataset is not None:
         valid_loader = torch.utils.data.DataLoader(valid_dataset, 32,
-                                                   shuffle=False, drop_last=False,
-                                                   num_workers=args.num_workers,
-                                                   pin_memory=True)
+                                                shuffle=False, drop_last=False,
+                                                num_workers=args.num_workers,
+                                                pin_memory=True)
     else:
         valid_loader = None
 
