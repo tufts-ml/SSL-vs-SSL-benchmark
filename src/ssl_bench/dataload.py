@@ -58,9 +58,9 @@ def get_dataloaders(args):
     fixmatch_strong = transforms.Compose([
         transforms.Grayscale(num_output_channels=3),
         # transforms.RandomHorizontalFlip(),
-        # transforms.RandomCrop(size=image_size,
-        #                 padding=int(image_size*0.125),
-        #                 padding_mode='reflect'),
+        transforms.RandomCrop(size=image_size,
+                        padding=int(image_size*0.125),
+                        padding_mode='reflect'),
         RandAugment(num_ops=1),
         transforms.ToTensor(),
         transforms.Normalize(mean=dataset_mean, std=dataset_std)
