@@ -188,7 +188,6 @@ def get_dataloaders(args):
         unlabeled_transform = TransformTwice(transform_weak)
     elif args.implementation in ["BarlowTwins", "SimCLR"]:
         unlabeled_transform = TransformTwice(transform_weak)
-        breakpoint()
     elif args.implementation == "LabelOnlyBaseline":
         unlabeled_transform = None
     elif args.implementation == "MixUp":
