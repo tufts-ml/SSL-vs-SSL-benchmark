@@ -23,7 +23,7 @@ export num_classes=2
 export use_pretrained=""
 export patience=200
 
-export method='LabelOnlyBaseline'
+export method='SimCLR'
 export resume='last_checkpoint.pth.tar'
 
 # Experiment setting
@@ -31,7 +31,7 @@ export dataset_name='FullCheXpertEffusion'
 export data_seed=0
 export training_seed=0
 
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/a/data_seed$data_seed/training_seed$training_seed/$method/pretrained$use_pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/SimCLR_lp/data_seed$data_seed/training_seed$training_seed/$method/pretrained$use_pretrained"
 echo "Training directory: $train_dir"
 
 mkdir -p $train_dir
@@ -43,16 +43,20 @@ export train_epoch=200
 export start_epoch=0
 
 # Data paths
+# export l_train_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/train_data.csv'
+# export val_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/val_data.csv'
+# export test_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/test_data.csv'
+# export root_dataset_path='/cluster/tufts/hugheslab/datasets/chexpert_sample_data/images'
 export l_train_dataset_path='/cluster/tufts/hugheslab/datasets/CheXpert-v1.0-small/splits_effusion/train_labeled.csv'
 export val_dataset_path='/cluster/tufts/hugheslab/datasets/CheXpert-v1.0-small/splits_effusion/val_labeled.csv'
 export test_dataset_path='/cluster/tufts/hugheslab/datasets/CheXpert-v1.0-small/splits_effusion/test_labeled.csv'
 export l_root_dataset_path='/cluster/tufts/hugheslab/datasets'
-
-
-
+export u_train_dataset_path='/cluster/tufts/hugheslab/datasets/CheXpert-v1.0-small/splits_effusion/unlabeled.csv'
+export u_root_dataset_path='/cluster/tufts/hugheslab/datasets'
 
 # Shared config
-export labeledtrain_batchsize=64
+export labeledtrain_batchsize=32
+export unlabeledtrain_batchsize=128
 
 # PL config, candidate hypers to search
 export optimizer_type='Adam'

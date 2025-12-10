@@ -79,11 +79,16 @@ method_configs = {
         "conf_threshold": loguniform(0.7, 0.95),
     }),
     'MixMatch': HyperparamSpace({
-        "lr": loguniform(1e-5, 1e-2),
-        "wd": loguniform(1e-6, 1e-3),
-        "alpha": loguniform(0.1, 10.0),
-        "temperature": loguniform(0.1, 1.0),
-        "lambda_u": loguniform(0.5, 100.0),
+        "lr": loguniform(3e-5, 3e-2),
+        "wd": loguniform(4e-6, 4e-3),
+        "alpha": uniform(0.1, 1.0),
+        "lambda_u": loguniform(7.5, 750.0),
+    }),
+    'PseudoLabeling': HyperparamSpace({
+        "lr": loguniform(3e-5, 3e-2),
+        "wd": loguniform(4e-6, 4e-3),
+        "lambda_u": loguniform(1e-1, 1e1), 
+        "confidence_threshold": uniform(0.95, 0.95),
     }),
     'BarlowTwins': HyperparamSpace({
         "lr": loguniform(1e-5, 1e-2),

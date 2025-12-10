@@ -14,6 +14,7 @@ from ssl_bench.methods.FixMatch import FixMatch
 from ssl_bench.methods.MixMatch import MixMatch
 from ssl_bench.methods.BarlowTwins import BarlowTwins
 from ssl_bench.methods.SimCLR import SimCLR
+from ssl_bench.methods.PseudoLabeling import PseudoLabeling
 import torch.optim as optim
 
 
@@ -166,6 +167,7 @@ def get_model(args):
         'MixMatch': MixMatch,
         'BarlowTwins': BarlowTwins,
         'SimCLR': SimCLR,
+        'PseudoLabeling': PseudoLabeling,
     }
 
     model_class = implementation_map.get(args.implementation)

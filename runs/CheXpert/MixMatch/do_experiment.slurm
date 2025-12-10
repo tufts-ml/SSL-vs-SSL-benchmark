@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64G
-#SBATCH --time=20:00:00
+#SBATCH --time=40:00:00
 #SBATCH --partition=hugheslab
 #SBATCH --gres=gpu:rtx_6000:1
 
@@ -38,4 +38,7 @@ python3 -m ssl_bench.hyper_search \
     --lr_warmup_epochs $lr_warmup_epochs \
     --optimizer_type $optimizer_type \
     --lr_schedule_type $lr_schedule_type \
-    --lr_cycle_epochs $lr_cycle_epochs 
+    --lr_cycle_epochs $lr_cycle_epochs \
+    --use_pretrained \
+    --freeze_backbone
+

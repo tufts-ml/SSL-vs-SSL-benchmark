@@ -15,19 +15,19 @@ else
 fi
 
 # Experiment settings
-export method='MixMatch'
+export method='PseudoLabeling'
 #export dataset_name='IDRID' 
 export dataset_name='FullCheXpertEffusion'
 export data_seed=0
 export training_seed=0
-export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/lp_40/data_seed$data_seed/training_seed$training_seed/$method/pretrained"
+export train_dir="/cluster/tufts/hugheslab/sslbench/experiments/$dataset_name/pl_ft_fixed/data_seed$data_seed/training_seed$training_seed/$method/pretrained"
 mkdir -p $train_dir
 
 # Model / training hyperparameters
 export arch='resnet18'
 export train_epoch=200
 export start_epoch=0
-export total_hour=40
+export total_hour=10
 export use_pretrained=""
 export num_workers=8
 export labeledtrain_batchsize=32
