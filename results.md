@@ -10,7 +10,7 @@
 | self      | MoCo v3 | | | |
 | self      | SimCLR | |64.65 (10/15)| 26.5778 (5/2) |
 | semi      | MixMatch | |69.74 (10/15)|29.83 (10/20)|
-| semi      | FixMatch | | | |
+| semi      | FixMatch | |66.3 (12/17)| |
 | semi      | PseudoLab | |73.48 (11/11)| |
 
 ## Linear Probing
