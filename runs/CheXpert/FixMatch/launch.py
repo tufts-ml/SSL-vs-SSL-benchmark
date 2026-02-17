@@ -11,22 +11,28 @@ slurm_args = [
     "--ntasks=1",
     "--cpus-per-task=8",
     "--mem-per-cpu=2G",
-    "--time=2:00:00",
+    "--time=10:00:00",
     "--partition=hugheslab",
     "--gres=gpu:rtx_6000:1",
 ]
-
 launch_args = [
     "--implementation FixMatch",
 
-    "--dataset_name CheXpertEffusion",
-    "--l_train_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/train_data_effusion.csv",
-    "--val_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/val_data_effusion.csv",
-    "--test_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/test_data_effusion.csv",
-    "--l_root_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/images",
-    "--u_train_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/unlabeled_tr.csv",
-    "--u_root_dataset_path /cluster/tufts/hugheslab/datasets/chexpert_sample_data/images",
-    # TODO get the unlabeled set on the cluster
+    "--dataset_name FullCheXpertEffusion",
+    "--l_train_dataset_path /cluster/tufts/hugheslab/datasets/CheXpert-v1.0-small/splits_effusion/train_labeled.csv",
+    "--val_dataset_path /cluster/tufts/hugheslab/datasets/CheXpert-v1.0-small/splits_effusion/val_labeled.csv",
+    "--test_dataset_path /cluster/tufts/hugheslab/datasets/CheXpert-v1.0-small/splits_effusion/test_labeled.csv",
+    "--l_root_dataset_path /cluster/tufts/hugheslab/datasets",
+    "--u_train_dataset_path /cluster/tufts/hugheslab/datasets/CheXpert-v1.0-small/splits_effusion/unlabeled.csv",
+    "--u_root_dataset_path /cluster/tufts/hugheslab/datasets",
+
+
+    # export l_train_dataset_path='/cluster/tufts/hugheslab/datasets/CheXpert-v1.0-small/splits_effusion/train_labeled.csv'
+    # export val_dataset_path='/cluster/tufts/hugheslab/datasets/CheXpert-v1.0-small/splits_effusion/val_labeled.csv'
+    # export test_dataset_path='/cluster/tufts/hugheslab/datasets/CheXpert-v1.0-small/splits_effusion/test_labeled.csv'
+    # export l_root_dataset_path='/cluster/tufts/hugheslab/datasets'
+    # export u_train_dataset_path='/cluster/tufts/hugheslab/datasets/CheXpert-v1.0-small/splits_effusion/unlabeled.csv'
+    # export u_root_dataset_path='/cluster/tufts/hugheslab/datasets'
 
     "--labeledtrain_batchsize 32",
     "--unlabeledtrain_batchsize 128",
@@ -37,7 +43,7 @@ launch_args = [
     # "--use_pretrained",
     "--arch resnet18",
 
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/CheXpert/FixMatch/test2",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/CheXpert/FixMatch/b",
 
 
     "--train_epoch 100",

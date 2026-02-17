@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=16G
-#SBATCH --time=10:00:00  # Adjust as needed
+#SBATCH --time=1:00:00  # Adjust as needed
 #SBATCH --partition=preempt
 
 # Load the necessary modules (if required)

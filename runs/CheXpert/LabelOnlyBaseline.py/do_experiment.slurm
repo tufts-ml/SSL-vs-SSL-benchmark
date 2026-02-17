@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 # Pass along all ENV variables as arguments to my Python script
-export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
+ROOT_PATH=/cluster/tufts/hugheslab/abaran03/SSL-vs-SSL-benchmark
+export PYTHONPATH="$ROOT_PATH:$PYTHONPATH"
 
 python -m $script "$@"\
     --num_workers $num_workers\
