@@ -2,6 +2,7 @@ from scipy.stats import loguniform
 from torchvision import transforms
 from torchvision.models import ResNet18_Weights
 from ssl_bench.utils.apply_clahe import apply_clahe
+from torchvision.transforms import RandAugment
 
 dataset_configs = {
     'TissueMNIST': {'dataset_mean': (0.0988, 0.0988, 0.0988),
@@ -192,7 +193,7 @@ def get_transformations(args):
         transforms.Grayscale(num_output_channels=3),
         transforms.Resize((390, 400)),
         transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
+        transforms.RandomCrop(size=img_size, padding=4, padding_mode='reflect'),
         transforms.ToTensor(),
         transforms.Normalize(mean=dataset_mean, std=dataset_std)
     ])
@@ -201,7 +202,7 @@ def get_transformations(args):
         transforms.Grayscale(num_output_channels=3),
         transforms.Resize((390, 400)),
         transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(size=image_size, padding=4, padding_mode='reflect'),
+        transforms.RandomCrop(size=img_size, padding=4, padding_mode='reflect'),
         RandAugment(),
         transforms.ToTensor(),
         transforms.Normalize(mean=dataset_mean, std=dataset_std)
@@ -291,6 +292,6 @@ method_configs = {
     'SimCLR': HyperparamSpace({
         "lr":  loguniform(10**-4.5, 10**-1.5),
         "wd": loguniform(10**-6.5, 10**-3.5),
-        "temperature": uniform(0.07, 0.12),
+        "temperature": loguniform(0.07, 0.12),
     }),
 }
