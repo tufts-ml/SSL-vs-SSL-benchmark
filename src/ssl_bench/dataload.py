@@ -199,7 +199,9 @@ def get_dataloaders(args):
             transform=transform_labeledtrain)
         test_dataset = torchvision.datasets.CIFAR100(
             root=args.test_dataset_path, train=False, download=True, transform=transform_eval)
-        valid_dataset = None
+        train_size = int(len(train_dataset) * 0.8) # 80% training data
+        valid_size = len(train_dataset) - train_size # 20% validation data
+        train_dataset, valid_dataset = torch.utils.data.random_split(train_dataset, [train_size, valid_size])
         dataset_class = None
     else:
         dataset_class = LabeledImageCSVDataset
