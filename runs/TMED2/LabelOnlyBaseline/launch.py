@@ -27,13 +27,13 @@ launch_args = [
     "--l_root_dataset_path /cluster/tufts/hugheslab/datasets/tmed/version2",
     # DataLoader config
     "--labeledtrain_batchsize 32",
-    "--num_workers 1",
+    "--num_workers 2",
     # model config
     "--freeze_backbone",
     "--use_pretrained",
-    "--arch wideresnet",
+    "--arch resnet18",
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/launcher_testing",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/TMED2/LabelOnlyBaseline/",
     # optimization config
     "--train_epoch 100",
     "--start_epoch 0",
