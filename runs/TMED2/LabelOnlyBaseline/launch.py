@@ -33,7 +33,7 @@ launch_args = [
     "--use_pretrained",
     "--arch resnet18",
     # output location
-    "--train_dir /cluster/tufts/hugheslab/sslbench/TMED2/LabelOnlyBaseline/",
+    "--train_dir /cluster/tufts/hugheslab/sslbench/experiments/TMED2/LabelOnlyBaseline/",
     # optimization config
     "--train_epoch 100",
     "--start_epoch 0",
