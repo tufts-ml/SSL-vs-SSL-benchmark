@@ -284,10 +284,18 @@ def train(args, method_config):
             break
 
     # Final Testing
-    test_metrics = eval_model(args, test_loader, model, args.weights, clf)
-    test_acc = test_metrics['balanced_accuracy']
+    # test_metrics = eval_model(args, test_loader, model, args.weights, clf)
+    # test_acc = test_metrics['balanced_accuracy']
 
-    log_metrics_to_tensorboard(writer, epoch, 'test', test_metrics)
+    # log_metrics_to_tensorboard(writer, epoch, 'test', test_metrics)
+
+    # with open(os.path.join(args.train_dir, 'training_summary.json'), 'w') as f:
+    #     json.dump({'best_val_accuracy': best_val_acc, 'test_accuracy': test_acc,
+    #                'total_epochs': epoch + 1, 'total_time': total_time}, f)
+        test_metrics = eval_model(args, test_loader, model, args.weights, clf)
+        test_acc = test_metrics['balanced_accuracy']
+
+        log_metrics_to_tensorboard(writer, epoch, 'test', test_metrics)
 
     with open(os.path.join(args.train_dir, 'training_summary.json'), 'w') as f:
         json.dump({'best_val_accuracy': best_val_acc, 'test_accuracy': test_acc,
