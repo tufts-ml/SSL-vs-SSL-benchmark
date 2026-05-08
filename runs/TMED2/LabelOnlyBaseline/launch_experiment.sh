@@ -8,6 +8,9 @@
 export ROOT_PATH='/cluster/tufts/hugheslab/nfalic01/SSL-vs-SSL-benchmark'
 export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
 
+export ROOT_PATH='/cluster/tufts/hugheslab/nfalic01/SSL-vs-SSL-benchmark'
+export PYTHONPATH="${PYTHONPATH}:$ROOT_PATH"
+
 if [[ -z $1 ]]; then
     ACTION_NAME='list'
 else
@@ -58,7 +61,8 @@ export lr_cycle_epochs=$train_epoch
 
 if [[ $ACTION_NAME == 'submit' ]]; then
     ## Use this line to submit the experiment to the batch scheduler
-    sbatch <./do_experiment.slurm
+    # sbatch <./do_experiment.slurm
+    sbatch --time=1-1:00:00 --mem=20G --gres=gpu:rtx_6000:1 --cpus-per-task=16 -p hugheslab <./do_experiment.slurm
 
 elif [[ $ACTION_NAME == 'run_here' ]]; then
     ## Use this line to just run interactively

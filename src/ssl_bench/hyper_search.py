@@ -339,6 +339,8 @@ def fit_logistic_regression(args, model, train_features, train_labels, val_featu
 
 def main(args):
     method_config = method_configs[args.implementation]
+    if not os.path.exists(args.train_dir):
+        os.makedirs(args.train_dir)
     log_path = os.path.join(args.train_dir, 'logging.log')
     os.makedirs(args.train_dir, exist_ok=True)
     logging.basicConfig(filename=log_path, encoding='utf-8', level=logging.INFO)

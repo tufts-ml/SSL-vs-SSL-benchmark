@@ -141,6 +141,7 @@ def get_model(args):
                                         dropout=0.0,
                                         num_classes=args.num_classes)
 
+        # Freeze layers only if using a pretrained model
         if args.use_pretrained and args.freeze_backbone:
             print("Freezing layers")
             for param in model.parameters():
