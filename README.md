@@ -1,6 +1,9 @@
 # SSL-vs-SSL-benchmark
 This is the code for benchmark comparing self-supervised and semi-supervised deep classifiers for medical images
 
+# HANDOFF DOCUMENTATION
+https://docs.google.com/document/d/1KYp2upSOU8nSkFexe-GfHnY7Rv1y2Bz-MjIJuxd6_18/edit?usp=sharing
+
 # Supplementary Materials
 Here we provide the Supplementary Materials[Appendix.pdf/] of our benchmark. 
 The Supplement includes following sections to describe the experiments and analysis in more details.
